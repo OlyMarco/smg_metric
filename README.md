@@ -4,6 +4,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![PyPI version](https://img.shields.io/pypi/v/smg-metrics.svg)](https://pypi.org/project/smg-metrics/)
 
 **7 categories, 45 metrics, 18 papers (2006–2026), fully typed & tested.**
 
@@ -40,7 +41,7 @@
 ## Quick Start (30 seconds)
 
 ```bash
-pip install -e .
+pip install smg-metrics
 ```
 
 ```python
@@ -76,10 +77,11 @@ smg-eval --pred gen.mid --ref ref.mid --dist --advanced --structural
 ## 1. Installation
 
 ```bash
-pip install -e .
+pip install smg-metrics
 
-# Or install dependencies manually:
-pip install muspy miditoolkit pretty-midi numpy scipy
+# Or install from source:
+git clone https://github.com/OlyMarco/smg_metric.git
+cd smg_metric && pip install -e .
 ```
 
 | Package | Version | Purpose |
