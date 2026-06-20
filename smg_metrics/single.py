@@ -4,6 +4,7 @@ References:
     - 13 MusPy metrics: Dong et al., "MusPy," ISMIR 2020.
     - CHE: Papadopoulos & Peeters, ISMIR 2012.
     - N-gram: Yang & Lerch, Neural Computing and Applications, 2018.
+    - Rhythmic/temporal features: Choi et al., "D3PIA," ICASSP 2026.
 """
 
 from __future__ import annotations
@@ -16,8 +17,16 @@ from smg_metrics.structural import (
     StructuralSingleResult,
     compute_single as _structural_single,
 )
+from smg_metrics.rhythmic import RhythmicResult, compute_single as _rhythmic_single
 
-__all__ = ["single_file", "SingleFileResult", "StructuralSingleResult"]
+__all__ = [
+    "single_file",
+    "SingleFileResult",
+    "single_file_structural",
+    "StructuralSingleResult",
+    "single_file_rhythmic",
+    "RhythmicResult",
+]
 
 
 def single_file(
@@ -58,3 +67,19 @@ def single_file_structural(
         A :class:`StructuralSingleResult` with CHE and ngram_div.
     """
     return _structural_single(midi_path)
+
+
+def single_file_rhythmic(
+    midi_path: Union[str, Path],
+) -> RhythmicResult:
+    """Evaluate a single MIDI file with D3PIA-style rhythmic metrics.
+
+    Computes mean IOI, rhythmic intensity, rhythmic density, and voice number.
+
+    Args:
+        midi_path: Path to a MIDI file.
+
+    Returns:
+        A :class:`RhythmicResult` with four rhythmic metrics.
+    """
+    return _rhythmic_single(midi_path)

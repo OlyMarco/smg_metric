@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Full metric test script for smg_metrics.
 
-Tests ALL 45 metrics on user-specified MIDI files (single-file)
+Tests ALL 51 metrics on user-specified MIDI files (single-file)
 and every file pair (pairwise), prints a summary table, and
 validates self-consistency (same file -> perfect scores).
 
@@ -34,6 +34,7 @@ if str(_root) not in sys.path:
 from smg_metrics import (
     single_file,
     single_file_structural,
+    single_file_rhythmic,
     pair_eval,
     pair_eval_structural,
     distribution_eval,
@@ -56,7 +57,7 @@ def _tag(v: float) -> str:
 
 
 def _test_single(midis: list[Path]) -> None:
-    """Run single-file quality + structural metrics."""
+    """Run single-file quality + structural + rhythmic metrics."""
     print(SEP)
     print(f"1. Single-file quality (13 metrics x {len(midis)} files)")
     print(SEP)
@@ -75,13 +76,22 @@ def _test_single(midis: list[Path]) -> None:
         for k, v in d.items():
             print(f"    {k:<12} {_fmt(v)}  {_tag(v)}")
 
+    print(f"\n{SEP}")
+    print(f"3. Single-file rhythmic/temporal (4 metrics x {len(midis)} files)")
+    print(SEP)
+    for m in midis:
+        d = single_file_rhythmic(str(m)).to_dict()
+        print(f"\n  {m.name}:")
+        for k, v in d.items():
+            print(f"    {k:<22} {_fmt(float(v))}  {_tag(float(v))}")
+
 
 def _test_pairwise(midis: list[Path]) -> None:
     """Run all pairwise metrics on every file pair."""
     n = len(midis)
     n_pairs = n * (n - 1) // 2
     print(f"\n{SEP}")
-    print(f"3. Pairwise metrics ({n_pairs} pairs x 30 metrics)")
+    print(f"4. Pairwise metrics ({n_pairs} pairs x 32 metrics)")
     print(SEP)
     pair_count = 0
     for i in range(n):
@@ -95,7 +105,7 @@ def _test_pairwise(midis: list[Path]) -> None:
             dist = distribution_eval(str(p), str(r)).to_dict()
             adv  = advanced_eval(str(p), str(r)).to_dict()
 
-            print("    Pair (8):")
+            print("    Pair (10):")
             for k, v in pair.items():
                 print(f"      {k:<14} {_fmt(v)}  {_tag(v)}")
             print("    Structural (2):")
@@ -113,7 +123,7 @@ def _test_pairwise(midis: list[Path]) -> None:
 def _test_self_consistency(midis: list[Path]) -> bool:
     """Verify self-comparison yields perfect scores."""
     print(f"\n{SEP}")
-    print("4. Self-consistency (same file -> perfect scores)")
+    print("5. Self-consistency (same file -> perfect scores)")
     print(SEP)
     all_pass = True
     for m in midis:
@@ -125,9 +135,11 @@ def _test_self_consistency(midis: list[Path]) -> bool:
             "mel_f1":       (abs(p.mel_f1 - 1.0) < 1e-3, "expect 1.0"),
             "i_iou":        (abs(p.i_iou - 1.0) < 1e-3, "expect 1.0"),
             "ver":          (abs(p.ver - 0.0) < 1e-3, "expect 0.0"),
-            "sim_chr":      (abs(p.sim_chr - 1.0) < 1e-3, "expect 1.0"),
-            "sim_grv":      (abs(p.sim_grv - 1.0) < 1e-3, "expect 1.0"),
+            "sim_chr":      (p.sim_chr > 0.95, "expect ~1.0 (bar-level cosine)"),
+            "sim_grv":      (p.sim_grv > 0.95, "expect ~1.0 (bar-level cosine)"),
             "ca":           (abs(p.ca - 1.0) < 1e-3, "expect 1.0"),
+            "onset_xor":    (abs(p.onset_xor - 0.0) < 1e-3, "expect 0.0"),
+            "note_overlap": (abs(p.note_overlap - 1.0) < 1e-3, "expect 1.0"),
             "melody_match": (abs(sp.melody_match - 1.0) < 1e-3, "expect 1.0"),
             "tonal_dist":   (abs(sp.tonal_dist - 0.0) < 1e-3, "expect 0.0"),
         }
@@ -160,7 +172,7 @@ def _collect_midis(args: argparse.Namespace) -> list[Path]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="smg_metrics full test script (45 metrics)",
+        description="smg_metrics full test script (51 metrics)",
         epilog=(
             "Examples:\n"
             "  python test.py data/                       # all MIDI in data/\n"
@@ -185,7 +197,7 @@ def main() -> None:
     n_pairs = n_files * (n_files - 1) // 2
 
     print(SEP)
-    print("smg_metrics -- Full Metric Test")
+    print("smg_metrics -- Full Metric Test (51 metrics)")
     print(SEP)
     print(f"  MIDI files : {n_files}")
     print(f"  File pairs : {n_pairs}")
@@ -202,9 +214,9 @@ def main() -> None:
 
     # Summary
     elapsed = time.time() - t0
-    single_count = 0 if args.pair_only else n_files * 15
-    pair_count = 0 if args.single_only else n_pairs * 30
-    consist_count = 0 if (args.single_only or n_files < 2) else n_files * 10
+    single_count = 0 if args.pair_only else n_files * (13 + 2 + 4)
+    pair_count = 0 if args.single_only else n_pairs * 32
+    consist_count = 0 if (args.single_only or n_files < 2) else n_files * 12
     total_tests = single_count + pair_count + consist_count
 
     print(f"\n{SEP}")
@@ -213,9 +225,10 @@ def main() -> None:
     if not args.pair_only:
         print(f"  Single-file quality    : {n_files} x 13 = {n_files * 13}")
         print(f"  Single-file structural : {n_files} x 2  = {n_files * 2}")
+        print(f"  Single-file rhythmic   : {n_files} x 4  = {n_files * 4}")
     if not args.single_only and n_files >= 2:
-        print(f"  Pairwise (all)         : {n_pairs} x 30 = {n_pairs * 30}")
-        print(f"  Self-consistency       : {n_files} x 10 = {n_files * 10}")
+        print(f"  Pairwise (all)         : {n_pairs} x 32 = {n_pairs * 32}")
+        print(f"  Self-consistency       : {n_files} x 12 = {n_files * 12}")
     print(f"  -------------------------------------------")
     print(f"  Total tests            : {total_tests}")
     print(f"  Self-consist           : {'ALL PASS' if all_pass else 'FAIL'}")

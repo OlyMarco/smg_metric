@@ -117,6 +117,8 @@ def extract_notes4(midi_path: Union[str, Path]) -> list[Note4]:
     midi = load_midi(midi_path)
     notes: list[Note4] = []
     for inst in midi.instruments:
+        if inst.is_drum:
+            continue
         prog = inst.program
         for n in inst.notes:
             notes.append(Note4(n.pitch, n.end - n.start, n.start, prog))
