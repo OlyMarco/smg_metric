@@ -5,6 +5,8 @@ References:
       Ou et al., "Unifying Symbolic Music Arrangement," NeurIPS 2025.
     - simChr / simgrv: Wu & Yang, "MuseMorphose," IEEE/ACM TASLP 2023.
     - CA: Lv et al., "GETMusic," IJCAI 2023.
+        - Onset XOR / Note overlap: Choi et al., "D3PIA," ICASSP 2026;
+            Raffel et al., "mir_eval," ISMIR 2014.
     - MM: Mongeau & Sankoff, Computers and the Humanities, 1990.
     - TD: Harte, Sandler & Gasser, ACM MM 2006.
 """
@@ -22,23 +24,26 @@ from smg_metrics.structural import (
     StructuralPairResult,
     compute_pair as _structural_pair,
 )
+from smg_metrics.rhythmic import onset_xor_distance, note_overlap
 
-__all__ = ["PairResult", "pair_eval"]
+__all__ = ["PairResult", "pair_eval", "pair_eval_structural"]
 
 
 @dataclass(frozen=True, slots=True)
 class PairResult:
-    """Container for all 8 pairwise comparison metrics.
+    """Container for all 10 pairwise comparison metrics.
 
     Attributes:
-        note_f1:   Note F1 (onset + pitch) — [0, 1].
-        notei_f1:  Notei F1 (+ instrument) — [0, 1].
-        mel_f1:    Melody F1 — [0, 1].
-        i_iou:     Instrument IoU — [0, 1].
-        ver:       Voice Error Rate — [0, inf).
-        sim_chr:   Chroma similarity — [0, 1].
-        sim_grv:   Groove similarity — [0, 1].
-        ca:        Chord Accuracy — [0, 1].
+        note_f1:      Note F1 (onset + pitch) — [0, 1].
+        notei_f1:     Notei F1 (+ instrument) — [0, 1].
+        mel_f1:       Melody F1 — [0, 1].
+        i_iou:        Instrument IoU — [0, 1].
+        ver:          Voice Error Rate — [0, inf).
+        sim_chr:      Chroma similarity — [0, 1].
+        sim_grv:      Groove similarity — [0, 1].
+        ca:           Chord Accuracy — [0, 1].
+        onset_xor:    Onset-pattern XOR distance — [0, 1].
+        note_overlap: mir_eval transcription average overlap — [0, 1].
     """
     note_f1: float
     notei_f1: float
@@ -48,6 +53,8 @@ class PairResult:
     sim_chr: float
     sim_grv: float
     ca: float
+    onset_xor: float
+    note_overlap: float
 
     def to_dict(self) -> dict[str, float]:
         """Return all metrics as a plain dict."""
@@ -58,12 +65,13 @@ def pair_eval(
     pred_path: Union[str, Path],
     ref_path: Union[str, Path],
 ) -> PairResult:
-    """Evaluate *pred* against *ref* with all 8 pairwise metrics.
+    """Evaluate *pred* against *ref* with all 10 pairwise metrics.
 
     Computes:
         - Note F1 / Notei F1 / Mel F1 / I-IoU / VER (note-level, NeurIPS 2025)
         - simChr / simgrv (bar-level, MuseMorphose)
         - CA (chord-level, GETMusic Viterbi)
+        - onset_xor / note_overlap (rhythmic, D3PIA / mir_eval)
 
     Args:
         pred_path: Path to the predicted / generated MIDI file.
@@ -83,6 +91,8 @@ def pair_eval(
     note_res: NoteF1Result = _note_all(pred_path, ref_path)
     sim_res: SimilarityResult = _sim_all(pred_path, ref_path)
     ca_val: float = compute_ca(pred_path, ref_path)
+    onset_xor_val: float = onset_xor_distance(pred_path, ref_path)
+    note_overlap_val: float = note_overlap(pred_path, ref_path)
 
     return PairResult(
         note_f1=note_res.note_f1,
@@ -93,6 +103,8 @@ def pair_eval(
         sim_chr=sim_res.sim_chr,
         sim_grv=sim_res.sim_grv,
         ca=ca_val,
+        onset_xor=onset_xor_val,
+        note_overlap=note_overlap_val,
     )
 
 

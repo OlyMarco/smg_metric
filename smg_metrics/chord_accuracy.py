@@ -21,9 +21,8 @@ from __future__ import annotations
 import bisect
 import itertools
 import math
-from collections import defaultdict
 from pathlib import Path
-from typing import Sequence, Union
+from typing import Union
 
 import numpy as np
 import miditoolkit
@@ -43,7 +42,6 @@ _NC = 'N.C.'
 _CHORDS: list = [_NC] + list(itertools.product(range(12), _KINDS))
 _KC: list = list(itertools.product(range(12), _CHORDS))
 _N_CHORDS = len(_CHORDS)
-_MAX_CHORDS = 1000
 
 # Hyper-parameters (GETMusic defaults)
 _P_OUT   = 0.01
@@ -156,6 +154,15 @@ def _viterbi(frame_ll: np.ndarray) -> list:
         idx.append(path[f, idx[-1]])
     return [_CHORDS[i % nc] for i in idx[::-1]]
 
+
+def _format_chord(chord) -> str:
+    """Convert an internal chord state to a stable string label."""
+    if chord == _NC:
+        return _NC
+    root, kind = chord
+    quality = "maj" if kind == "" else str(kind)
+    return f"{_PITCH_NAMES[int(root)]}:{quality}"
+
 # ── MIDI → chord sequence ────────────────────────────────────────
 
 def midi_to_chords(midi_path: Union[str, Path]) -> list[str]:
@@ -185,11 +192,11 @@ def midi_to_chords(midi_path: Union[str, Path]) -> list[str]:
     num = ts.numerator if ts else 4
     den = ts.denominator if ts else 4
     bar_len = int(num * midi.ticks_per_beat * 4 / den)
-    max_ch = max(1, math.ceil(max(n.end for n in notes) / bar_len))
-    boundaries = [bar_len * i for i in range(max_ch)]
+    n_bars = max(1, math.ceil(max(n.end for n in notes) / bar_len))
+    boundaries = [bar_len * i for i in range(1, n_bars)]
     pv = _pitch_vectors(notes, boundaries)
     fl = _CONC * pv @ _VEC_T
-    return _viterbi(fl)
+    return [_format_chord(chord) for chord in _viterbi(fl)]
 
 
 def compute_ca(pred_path: Union[str, Path], ref_path: Union[str, Path]) -> float:

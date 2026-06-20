@@ -47,7 +47,7 @@ class SimilarityResult:
 def _l2(vec: np.ndarray, dim: int) -> np.ndarray:
     """L2-normalise *vec*; fall back to uniform if zero."""
     norm = np.linalg.norm(vec)
-    return vec / norm if norm > 1e-12 else np.ones(dim) / dim
+    return vec / norm if norm > 1e-12 else np.ones(dim) / np.sqrt(dim)
 
 
 def _beats_per_measure(pm: pretty_midi.PrettyMIDI) -> int:

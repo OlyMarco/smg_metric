@@ -5,7 +5,10 @@ Usage::
     # Single-file quality (13 MusPy metrics)
     smg-eval --music generated.mid
 
-    # Pairwise note-level + bar-level + chord-level (8 metrics)
+    # Single-file rhythmic/temporal metrics (4 D3PIA metrics)
+    smg-eval --music generated.mid --rhythmic
+
+    # Pairwise note-level + bar-level + chord-level + rhythmic (10 metrics)
     smg-eval --pred generated.mid --ref reference.mid
 
     # Distribution-level metrics (6 metrics: PD, DD, OOK, SC_sim, PCE_sim, GS_sim)
@@ -16,7 +19,7 @@ Usage::
     smg-eval --pred gen.mid --ref ref.mid --structural
 
     # All metrics
-    smg-eval --pred gen.mid --ref ref.mid --dist --advanced --structural
+    smg-eval --music gen.mid --pred gen.mid --ref ref.mid --dist --advanced --structural --rhythmic
 
     # Batch directory
     smg-eval --pred_dir ./pred/ --ref_dir ./ref/
@@ -26,11 +29,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 from typing import Any
 
-from smg_metrics.single import single_file, single_file_structural
+from smg_metrics.single import single_file, single_file_structural, single_file_rhythmic
 from smg_metrics.pair import pair_eval, pair_eval_structural
 from smg_metrics.distribution import compute_all as distribution_eval
 from smg_metrics.advanced import compute_all as advanced_eval
@@ -48,6 +52,17 @@ def _print_result(label: str, d: dict[str, Any], indent: int = 2, col_width: int
     sp = " " * indent
     for k, v in d.items():
         print(f"{sp}{k:<{col_width}} = {_fmt(v)}")
+
+
+def _json_safe(obj: Any) -> Any:
+    """Convert NaN/inf floats to ``None`` for standards-compliant JSON."""
+    if isinstance(obj, float):
+        return obj if math.isfinite(obj) else None
+    if isinstance(obj, dict):
+        return {k: _json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_json_safe(v) for v in obj]
+    return obj
 
 
 def _run_single(midi: str, root: int, mode: str) -> dict[str, Any]:
@@ -108,16 +123,16 @@ def main() -> None:
         epilog=(
             "Examples:\n"
             "  smg-eval --music generated.mid\n"
-            "  smg-eval --music generated.mid --structural\n"
+            "  smg-eval --music generated.mid --structural --rhythmic\n"
             "  smg-eval --pred gen.mid --ref ref.mid\n"
             "  smg-eval --pred gen.mid --ref ref.mid --dist\n"
             "  smg-eval --pred gen.mid --ref ref.mid --advanced\n"
             "  smg-eval --pred gen.mid --ref ref.mid --structural\n"
-            "  smg-eval --pred gen.mid --ref ref.mid --dist --advanced --structural\n"
+            "  smg-eval --music gen.mid --pred gen.mid --ref ref.mid --dist --advanced --structural --rhythmic\n"
             "  smg-eval --pred_dir ./pred/ --ref_dir ./ref/\n"
         ),
     )
-    p.add_argument("--music",     help="Single-file quality (12 MusPy metrics)")
+    p.add_argument("--music",     help="Single-file quality (13 MusPy metrics)")
     p.add_argument("--pred",      help="Predicted MIDI file")
     p.add_argument("--ref",       help="Reference MIDI file")
     p.add_argument("--pred_dir",  help="Predicted MIDI directory")
@@ -127,6 +142,7 @@ def main() -> None:
     p.add_argument("--dist",  action="store_true",          help="Include distribution-level metrics (PD, DD, OOK, SC_sim, PCE_sim, GS_sim)")
     p.add_argument("--advanced", action="store_true",       help="Include advanced metrics (KL, OA, CI, CTS, CR, ReconAcc)")
     p.add_argument("--structural", action="store_true",     help="Include structural metrics (CHE, Ngram, MelodyMatch, TonalDist)")
+    p.add_argument("--rhythmic", action="store_true",       help="Include rhythmic/temporal metrics (IOI, RI, RD, VN)")
     p.add_argument("--json",  action="store_true",          help="Output as JSON")
 
     args = p.parse_args()
@@ -143,8 +159,16 @@ def main() -> None:
                 print("\n-- Structural --")
                 _print_result("structural", struct)
             result.update(struct)
-    elif args.pred and args.ref:
-        result = {}
+        if args.rhythmic:
+            rhythm = single_file_rhythmic(args.music).to_dict()
+            if not args.json:
+                print("\n-- Rhythmic/Temporal --")
+                _print_result("rhythmic", rhythm)
+            result.update(rhythm)
+
+    if args.pred and args.ref:
+        if result is None:
+            result = {}
         if not args.json:
             print(f"\n{'='*60}\nPairwise evaluation\n  pred: {args.pred}\n  ref:  {args.ref}\n{'='*60}")
             print("\n-- Single-file (pred) --")
@@ -157,7 +181,7 @@ def main() -> None:
         if not args.json:
             print("\n-- Pairwise --")
             _print_result("pair", pair)
-        result = pair
+        result.update(pair)
         if args.structural:
             struct_s = single_file_structural(args.pred).to_dict()
             struct_p = pair_eval_structural(args.pred, args.ref).to_dict()
@@ -168,6 +192,12 @@ def main() -> None:
                 _print_result("structural", struct_p)
             result.update(struct_s)
             result.update(struct_p)
+        if args.rhythmic:
+            rhythm_s = single_file_rhythmic(args.pred).to_dict()
+            if not args.json:
+                print("\n-- Rhythmic/Temporal (single) --")
+                _print_result("rhythmic", rhythm_s)
+            result.update(rhythm_s)
         if args.dist:
             dist = distribution_eval(args.pred, args.ref).to_dict()
             if not args.json:
@@ -180,11 +210,11 @@ def main() -> None:
                 print("\n-- Advanced --")
                 _print_result("adv", adv)
             result.update(adv)
-    elif args.pred_dir and args.ref_dir:
+    elif not args.music and args.pred_dir and args.ref_dir:
         result = _run_batch(args.pred_dir, args.ref_dir, args.root, args.mode)
-    else:
+    elif result is None:
         p.print_help()
         return
 
     if args.json and result is not None:
-        print(json.dumps(result, indent=2, ensure_ascii=False))
+        print(json.dumps(_json_safe(result), indent=2, ensure_ascii=False, allow_nan=False))
