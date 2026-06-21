@@ -4,9 +4,9 @@ References:
     - Note F1 / Notei F1 / Mel F1 / I-IoU / VER:
       Ou et al., "Unifying Symbolic Music Arrangement," NeurIPS 2025.
     - simChr / simgrv: Wu & Yang, "MuseMorphose," IEEE/ACM TASLP 2023.
-    - CA: Lv et al., "GETMusic," IJCAI 2023.
-        - Onset XOR / Note overlap: Choi et al., "D3PIA," ICASSP 2026;
-            Raffel et al., "mir_eval," ISMIR 2014.
+    - CA: FGG (Zhu et al., ICML 2025) using music-x-lab DP chord recognition.
+    - Onset XOR / Note overlap: Choi et al., "D3PIA," ICASSP 2026;
+      Raffel et al., "mir_eval," ISMIR 2014.
     - MM: Mongeau & Sankoff, Computers and the Humanities, 1990.
     - TD: Harte, Sandler & Gasser, ACM MM 2006.
 """

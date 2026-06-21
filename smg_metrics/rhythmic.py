@@ -29,6 +29,7 @@ __all__ = [
     "voice_number",
     "onset_xor_distance",
     "note_overlap",
+    "grooving_pattern_similarity",
     "compute_single",
 ]
 
@@ -42,6 +43,9 @@ class RhythmicResult:
         rhythmic_intensity: Average number of note onsets per occupied second.
         rhythmic_density: Binary onset occupancy over a quantised grid.
         voice_number: Average number of simultaneous voices at active grid steps.
+
+    Reference:
+        Choi et al., "D3PIA," ICASSP 2026.
     """
 
     mean_ioi: float
@@ -324,6 +328,101 @@ def note_overlap(
         offset_ratio=offset_ratio,
     )
     return float(overlap)
+
+
+# ── D3PIA Grooving Pattern Similarity (pairwise) ─────────────────
+
+def grooving_pattern_similarity(
+    pred_path: Union[str, Path],
+    ref_path: Union[str, Path],
+    positions_per_bar: int = 16,
+) -> float:
+    """Compute D3PIA Grooving Pattern Similarity between two MIDI files.
+
+    For each file, extracts per-bar binary onset vectors, then computes
+    the mean pairwise XOR similarity across all bar pairs *within* each
+    file.  Returns the ratio of pred-GS to ref-GS.
+
+    XOR distance (Wu & Yang, ISMIR 2020):
+        XOR_dist(a, b) = sum(|a - b|) / time_resolution
+        GS_pair = 1 - XOR_dist
+
+    The final GS is the average over all C(n_bars, 2) pairs within a file.
+
+    Reference:
+        Choi et al., "D3PIA," ICASSP 2026.
+        Wu & Yang, "The Jazz Transformer," ISMIR 2020.
+        midisym/midisym/analysis/feature_extraction.py.
+
+    Args:
+        pred_path: Path to the predicted / generated MIDI file.
+        ref_path:  Path to the reference / ground-truth MIDI file.
+        positions_per_bar: Grid resolution per bar (default 16).
+
+    Returns:
+        GS value in [0, 1] (pred_gs / ref_gs), or NaN if ref has no bars.
+    """
+    import itertools as _itertools
+
+    def _bar_onset_vecs(midi_path, pos_per_bar):
+        import pretty_midi
+        pm = pretty_midi.PrettyMIDI(str(midi_path))
+        notes = extract_notes3(midi_path)
+        if not notes:
+            return []
+        beats = pm.get_beats()
+        if len(beats) < 2:
+            return []
+        beat_dur = float(np.median(np.diff(beats)))
+        bpm = 4
+        sixteenth = beat_dur / max(1, pos_per_bar // bpm)
+        n_bars = max(1, len(beats) // bpm)
+        # Use pretty_midi note onsets directly (in seconds)
+        onsets = []
+        for inst in pm.instruments:
+            if inst.is_drum:
+                continue
+            for note in inst.notes:
+                onsets.append(note.start)
+        onsets.sort()
+        beat_times = list(beats)
+        bars = []
+        for m in range(n_bars):
+            i0 = m * bpm
+            i1 = min((m + 1) * bpm, len(beat_times))
+            if i0 >= len(beat_times):
+                break
+            t0 = beat_times[i0]
+            t1 = beat_times[i1] if i1 < len(beat_times) else t0 + beat_dur * bpm
+            vec = np.zeros(pos_per_bar, dtype=np.float64)
+            for onset in onsets:
+                if t0 <= onset < t1:
+                    pos = int(round((onset - t0) / sixteenth))
+                    pos = max(0, min(pos, pos_per_bar - 1))
+                    vec[pos] = 1.0
+            bars.append(vec)
+        return bars
+
+    def _within_gs(bars):
+        if len(bars) < 2:
+            return float('nan')
+        tr = len(bars[0])
+        pairs = list(_itertools.combinations(range(len(bars)), 2))
+        sims = [1.0 - np.sum(np.abs(bars[a] - bars[b])) / tr for a, b in pairs]
+        return float(np.mean(sims))
+
+    pred_bars = _bar_onset_vecs(pred_path, positions_per_bar)
+    ref_bars = _bar_onset_vecs(ref_path, positions_per_bar)
+
+    pred_gs = _within_gs(pred_bars)
+    ref_gs = _within_gs(ref_bars)
+
+    if np.isnan(ref_gs) or ref_gs == 0:
+        return float('nan')
+    if np.isnan(pred_gs):
+        return 0.0
+
+    return pred_gs / ref_gs
 
 
 if __name__ == "__main__":

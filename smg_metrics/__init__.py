@@ -7,7 +7,8 @@ from smg_metrics.single import (
     single_file_rhythmic,
 )
 from smg_metrics.pair import pair_eval, PairResult, pair_eval_structural
-from smg_metrics.chord_accuracy import compute_ca, midi_to_chords
+from smg_metrics.chord_accuracy import compute_ca, midi_to_chords, midi_to_chords_dp
+from smg_metrics.chord_recognition import recognize_chords, recognize_chords_beat
 from smg_metrics.distribution import DistributionResult, compute_all as distribution_eval
 from smg_metrics.advanced import AdvancedResult, compute_all as advanced_eval
 from smg_metrics.structural import (
@@ -26,11 +27,13 @@ from smg_metrics.rhythmic import (
     voice_number,
     onset_xor_distance,
     note_overlap,
+    grooving_pattern_similarity,
 )
 from smg_metrics import muspy_ext
 from smg_metrics import note_f1
 from smg_metrics import similarity
 from smg_metrics import chord_accuracy
+from smg_metrics import chord_recognition
 from smg_metrics import distribution
 from smg_metrics import advanced
 from smg_metrics import structural
@@ -56,6 +59,9 @@ __all__ = [
     # Individual metrics
     "compute_ca",
     "midi_to_chords",
+    "midi_to_chords_dp",
+    "recognize_chords",
+    "recognize_chords_beat",
     "chord_histogram_entropy",
     "ngram_diversity",
     "melody_matchness",
@@ -66,15 +72,17 @@ __all__ = [
     "voice_number",
     "onset_xor_distance",
     "note_overlap",
+    "grooving_pattern_similarity",
     # Low-level modules
     "muspy_ext",
     "note_f1",
     "similarity",
     "chord_accuracy",
+    "chord_recognition",
     "distribution",
     "advanced",
     "structural",
     "rhythmic",
 ]
 
-__version__ = "0.4.0"
+__version__ = "5.0.0"

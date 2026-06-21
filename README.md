@@ -1,4 +1,4 @@
-# smg_metrics
+# smg-metrics
 
 > **S**ymbolic **M**usic **G**eneration **Metrics** — 51 objective evaluation metrics, zero config.
 
@@ -10,14 +10,14 @@
 
 | Category | Count | Latest source | Year |
 |----------|-------|---------------|------|
-| A. Single-file Quality | 13 | [MusPy](https://arxiv.org/abs/2008.01951) | 2020 |
+| A. Single-file Quality | 13 | [MusPy](https://arxiv.org/abs/2008.01951) / [XMusic](https://arxiv.org/abs/2501.08809) | 2025 |
 | B. Note-level Pairwise | 5 | [Ou et al.](https://arxiv.org/abs/2408.15176) | 2025 |
 | C. Bar-level Pairwise | 2 | [MuseMorphose](https://arxiv.org/abs/2105.04090) | 2023 |
-| D. Chord-level Pairwise | 1 | [GETMusic](https://arxiv.org/abs/2305.10841) | 2023 |
-| E. Distribution-level | 6 | [FGG](https://arxiv.org/abs/2410.08435) | 2025 |
+| D. Chord-level Pairwise | 1 | [FGG](https://arxiv.org/abs/2410.08435) / [music-x-lab](https://github.com/music-x-lab/midi-chord-recognition) | 2025 |
+| E. Distribution-level | 5 | [SongMASS](https://arxiv.org/abs/2010.02305) | 2020 |
 | F. Advanced | 14 | [Text2midi](https://arxiv.org/abs/2412.16526) | 2025 |
 | G. Structural | 4 | [MuseTok](https://arxiv.org/abs/2510.16273) | 2026 |
-| H. Rhythmic/Temporal | 6 | [D3PIA](https://github.com/jech2/D3PIA) | 2026 |
+| H. Rhythmic/Temporal | 7 | [D3PIA](https://github.com/jech2/D3PIA) | 2026 |
 
 ## Quick Start
 
@@ -28,19 +28,25 @@ pip install smg-metrics
 ```python
 from smg_metrics import single_file, single_file_rhythmic, pair_eval
 
+# Single-file quality (13 MusPy metrics)
 quality = single_file("generated.mid")
 print(quality.pce, quality.ebr, quality.gs)
 
+# Rhythmic metrics (4 D3PIA-style)
 rhythm = single_file_rhythmic("generated.mid")
 print(rhythm.mean_ioi, rhythm.rhythmic_density)
 
+# Pairwise comparison (10 metrics)
 pair = pair_eval("generated.mid", "reference.mid")
-print(pair.note_f1, pair.sim_chr, pair.ca, pair.note_overlap)
+print(pair.note_f1, pair.sim_chr, pair.ca)
 ```
 
 ```bash
-smg-eval --music generated.mid
-smg-eval --music gen.mid --pred gen.mid --ref ref.mid --dist --advanced --structural --rhythmic
+# CLI
+smg-eval -m generated.mid
+smg-eval -p gen.mid -r ref.mid
+smg-eval -m gen.mid -p gen.mid -r ref.mid -d -a -S -R
+smg-eval -m gen.mid --only pce ebr gs --json
 ```
 
 ## Installation
@@ -57,7 +63,7 @@ cd smg_metric && pip install -e .
 |---------|---------|---------|
 | [`muspy`](https://github.com/salu133445/muspy) | >= 0.5.0 | 13 single-file quality metrics |
 | [`miditoolkit`](https://github.com/music-x-lab/midi-toolkit) | >= 1.0 | MIDI parsing |
-| [`pretty-midi`](https://github.com/craffel/pretty-midi) | >= 0.2.10 | Bar-level similarity parsing |
+| [`pretty-midi`](https://github.com/craffel/pretty-midi) | >= 0.2.10 | Beat tracking & bar-level parsing |
 | [`mir-eval`](https://github.com/craffel/mir_eval) | >= 0.7 | Note-overlap metric |
 | `numpy` | >= 1.24 | Numerical computation |
 | `scipy` | >= 1.10 | Scientific computing |
@@ -71,7 +77,7 @@ from smg_metrics import (
     single_file_rhythmic,       # 4 D3PIA-style rhythmic metrics
     pair_eval,                  # 10 core pairwise metrics
     pair_eval_structural,       # 2 structural pairwise metrics
-    distribution_eval,          # 6 distribution-level metrics
+    distribution_eval,          # 5 distribution-level metrics
     advanced_eval,              # 14 advanced metrics
 )
 ```
@@ -83,10 +89,27 @@ from smg_metrics import (
 | `RhythmicResult` | mean_ioi, rhythmic_intensity, rhythmic_density, voice_number | 4 |
 | `PairResult` | note_f1, notei_f1, mel_f1, i_iou, ver, sim_chr, sim_grv, ca, onset_xor, note_overlap | 10 |
 | `StructuralPairResult` | melody_match, tonal_dist | 2 |
-| `DistributionResult` | pd, dd, ook, sc_sim, pce_sim, gs_sim | 6 |
+| `DistributionResult` | pd, dd, sc_sim, pce_sim, gs_sim | 5 |
 | `AdvancedResult` | kl_duration, kl_ioi, kl_pitch, oa_duration, oa_ioi, oa_pitch_range, oa_density, ci_precision, ci_recall, ci_f1, cts, cr_pred, cr_ref, recon_acc | 14 |
 
 Every result container is a frozen dataclass with `.to_dict()`.
+
+### Chord Recognition
+
+```python
+from smg_metrics import recognize_chords, compute_ca
+
+# Beat-level DP chord recognition (music-x-lab algorithm)
+chords = recognize_chords("song.mid")
+for iv in chords:
+    print(f"{iv.start:.2f}-{iv.end:.2f}: {iv.label}")
+
+# Chord Accuracy with DP method (default)
+ca = compute_ca("pred.mid", "ref.mid", method="dp")
+
+# Or use Viterbi method (GETMusic)
+ca = compute_ca("pred.mid", "ref.mid", method="viterbi")
+```
 
 ### Individual metrics
 
@@ -94,102 +117,114 @@ Every result container is a frozen dataclass with `.to_dict()`.
 from smg_metrics import (
     chord_histogram_entropy, ngram_diversity,
     melody_matchness, tonal_distance,
-    compute_ca, midi_to_chords,
+    compute_ca, midi_to_chords, midi_to_chords_dp,
     mean_ioi, rhythmic_intensity, rhythmic_density,
     voice_number, onset_xor_distance, note_overlap,
+    grooving_pattern_similarity,
 )
 
 che = chord_histogram_entropy("file.mid")
-div = ngram_diversity("file.mid", n=4)
 ca = compute_ca("pred.mid", "ref.mid")
-ioi = mean_ioi("file.mid")
-xor = onset_xor_distance("pred.mid", "ref.mid")
-nov = note_overlap("pred.mid", "ref.mid")
+gs = grooving_pattern_similarity("pred.mid", "ref.mid")
 ```
 
 ## CLI Usage
 
 ```bash
 # Single-file quality (13 metrics)
-smg-eval --music generated.mid
+smg-eval -m generated.mid
 
-# Single-file quality + structural + rhythmic (19 metrics)
-smg-eval --music generated.mid --structural --rhythmic
+# Single-file + structural + rhythmic (19 metrics)
+smg-eval -m generated.mid -S -R
 
 # Pairwise core (10 metrics)
-smg-eval --pred gen.mid --ref ref.mid
+smg-eval -p gen.mid -r ref.mid
 
-# Full 51-metric run for one generated/reference pair
-smg-eval --music gen.mid --pred gen.mid --ref ref.mid --dist --advanced --structural --rhythmic
+# Full 51-metric run
+smg-eval -m gen.mid -p gen.mid -r ref.mid -d -a -S -R
+
+# Select specific metrics
+smg-eval -m gen.mid --only pce ebr gs
+smg-eval -p gen.mid -r ref.mid --only ca note_f1 grooving_pattern_similarity
+
+# List all available metrics
+smg-eval --list-metrics
 
 # JSON output
-smg-eval --pred gen.mid --ref ref.mid --json
+smg-eval -m gen.mid --json
 
 # Batch directory
 smg-eval --pred_dir ./pred/ --ref_dir ./ref/
+
+# Timing
+smg-eval -m gen.mid --time
 ```
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--music PATH` | Single-file mode | -- |
-| `--pred PATH` | Predicted MIDI for pair mode | -- |
-| `--ref PATH` | Reference MIDI for pair mode | -- |
+| `-m, --music PATH` | Single-file mode | -- |
+| `-p, --pred PATH` | Predicted MIDI for pair mode | -- |
+| `-r, --ref PATH` | Reference MIDI for pair mode | -- |
 | `--pred_dir DIR` | Batch predicted directory | -- |
 | `--ref_dir DIR` | Batch reference directory | -- |
 | `--root INT` | Root pitch for PISR | `0` |
 | `--mode {major,minor}` | Scale mode for PISR | `major` |
-| `--dist` | Include distribution-level metrics | `false` |
-| `--advanced` | Include advanced metrics | `false` |
-| `--structural` | Include structural metrics | `false` |
-| `--rhythmic` | Include rhythmic/temporal metrics | `false` |
-| `--json` | Output as JSON | `false` |
+| `-d, --dist` | Distribution-level metrics | `false` |
+| `-a, --advanced` | Advanced metrics | `false` |
+| `-S, --structural` | Structural metrics | `false` |
+| `-R, --rhythmic` | Rhythmic metrics | `false` |
+| `--only METRIC ...` | Select specific metrics | -- |
+| `--list-metrics` | List all metric names | -- |
+| `--json` | JSON output | `false` |
+| `--time` | Print elapsed time | `false` |
 
 ## Metrics Reference
 
 ### A. Single-file Quality (13)
 
-Source: [MusPy](https://github.com/salu133445/muspy) / ISMIR 2020.
+Sources: [MusPy](https://github.com/salu133445/muspy) / ISMIR 2020, [XMusic](https://arxiv.org/abs/2501.08809) / IEEE 2025.
 
-| Metric | Symbol | Range |
-|--------|--------|-------|
-| Pitch Class Entropy | PCE | [0, log2(12)] |
-| Empty Beat Rate | EBR | [0, 1] |
-| Groove Consistency | GS | [0, 1] |
-| Scale Consistency | SC | [0, 1] |
-| Pitch-in-Scale Rate | PISR | [0, 1] |
-| Polyphony | Poly | [0, inf) |
-| Polyphony Rate | PR | [0, 1] |
-| Pitch Range | Range | [0, 127] |
-| Unique Pitches | N_p | [0, 128] |
-| Unique Pitch Classes | N_pc | [0, 12] |
-| Empty Measure Rate | EMR | [0, 1] |
-| Pitch Entropy | PE | [0, 7] |
-| Drum Pattern Consistency | DPC | [0, 1] |
+| Metric | Symbol | Range | Reference |
+|--------|--------|-------|-----------|
+| Pitch Class Entropy | PCE | [0, log₂12] | Wu & Yang, ISMIR 2020; XMusic 2025 |
+| Empty Beat Rate | EBR | [0, 1] | Dong et al., ISMIR 2018; XMusic 2025 |
+| Groove Consistency | GS | [0, 1] | Wu & Yang, ISMIR 2020; XMusic 2025 |
+| Scale Consistency | SC | [0, 1] | Mogren, NeurIPS-W 2016 |
+| Pitch-in-Scale Rate | PISR | [0, 1] | Dong et al., AAAI 2018 |
+| Polyphony | Poly | [1, ∞) | Dong et al., AAAI 2018 |
+| Polyphony Rate | PR | [0, 1] | Dong et al., AAAI 2018 |
+| Pitch Range | Range | [0, 127] | MusPy 2020 |
+| Unique Pitches | N_p | [0, 128] | MusPy 2020 |
+| Unique Pitch Classes | N_pc | [0, 12] | MusPy 2020 |
+| Empty Measure Rate | EMR | [0, 1] | Dong et al., AAAI 2018 |
+| Pitch Entropy | PE | [0, 7] | MusPy 2020 |
+| Drum Pattern Consistency | DPC | [0, 1] | Dong et al., AAAI 2018 |
 
 ### B. Note-level Pairwise (5)
 
-Source: [Ou et al.](https://arxiv.org/abs/2408.15176), Appendix C.
+Source: [Ou et al.](https://arxiv.org/abs/2408.15176), NeurIPS 2025.
 
-| Metric | Symbol | Range | Description |
-|--------|--------|-------|-------------|
-| Note F1 | F1 | [0, 1] | Quantised onset + pitch F1 |
-| Notei F1 | F1i | [0, 1] | Note F1 plus instrument |
-| Melody F1 | F1mel | [0, 1] | Note F1 on detected melody track |
-| Instrument IoU | I-IoU | [0, 1] | Instrument set IoU |
-| Voice Error Rate | VER | [0, inf) | Normalised voice-order edit distance |
+| Metric | Symbol | Range |
+|--------|--------|-------|
+| Note F1 | F1 | [0, 1] |
+| Notei F1 | F1i | [0, 1] |
+| Melody F1 | F1mel | [0, 1] |
+| Instrument IoU | I-IoU | [0, 1] |
+| Voice Error Rate | VER | [0, ∞) |
 
-### B2. Pairwise Rhythmic (2)
+### B2. Pairwise Rhythmic (3)
 
-Sources: [D3PIA](https://github.com/jech2/D3PIA), [mir_eval](https://github.com/craffel/mir_eval).
+Sources: [D3PIA](https://github.com/jech2/D3PIA) ICASSP 2026, [mir_eval](https://github.com/craffel/mir_eval) ISMIR 2014, [Wu & Yang](https://arxiv.org/abs/2008.01951) ISMIR 2020.
 
-| Metric | Symbol | Range | Description |
-|--------|--------|-------|-------------|
-| Onset XOR Distance | XOR | [0, 1] | Full-piece aligned binary onset-pattern XOR distance |
-| Note Overlap | NOvlp | [0, 1] | mir_eval transcription average overlap |
+| Metric | Symbol | Range |
+|--------|--------|-------|
+| Onset XOR Distance | XOR | [0, 1] |
+| Note Overlap | NOvlp | [0, 1] |
+| Grooving Pattern Similarity | GS_d3pia | [0, ∞) |
 
 ### C. Bar-level Pairwise (2)
 
-Source: [MuseMorphose](https://arxiv.org/abs/2105.04090).
+Source: [MuseMorphose](https://arxiv.org/abs/2105.04090), IEEE/ACM TASLP 2023.
 
 | Metric | Symbol | Range |
 |--------|--------|-------|
@@ -198,145 +233,104 @@ Source: [MuseMorphose](https://arxiv.org/abs/2105.04090).
 
 ### D. Chord-level Pairwise (1)
 
-Source: [GETMusic](https://arxiv.org/abs/2305.10841), Eq. 6.
+Source: [FGG](https://arxiv.org/abs/2410.08435) ICML 2025, [music-x-lab/midi-chord-recognition](https://github.com/music-x-lab/midi-chord-recognition).
 
 | Metric | Symbol | Range | Description |
 |--------|--------|-------|-------------|
-| Chord Accuracy | CA | [0, 1] | Per-measure chord label match rate with Viterbi HMM chord recognition |
+| Chord Accuracy | CA | [0, 1] | Beat-level DP chord recognition + exact match |
 
-### E. Distribution-level (6)
+**Chord Recognition Pipeline** (adapted from music-x-lab):
+1. Extract beat/downbeat positions from MIDI tempo map
+2. Quantise notes to beat grid → per-beat 12-dim treble chroma + bass chroma
+3. Channel-weighted aggregation (thickness + bass reweighting)
+4. Score each chord template per beat (with bass bonus)
+5. Dynamic-programming decode with span-length reward and transition penalty
+6. Output interval-level chord labels
 
-Sources: [SongMASS](https://arxiv.org/abs/2012.05168), [FGG](https://arxiv.org/abs/2410.08435).
+Two methods available: `'dp'` (default, beat-level) and `'viterbi'` (bar-level HMM).
 
-| Metric | Range | Description |
-|--------|-------|-------------|
-| PD | [0, 1] | Pitch distribution overlap |
-| DD | [0, 1] | Duration distribution overlap |
-| OOK | [0, 1] | Out-of-key rate on active 16th-note steps |
-| SC_sim | [0, 1] | Scale consistency similarity |
-| PCE_sim | [0, 1] | Pitch-class entropy similarity |
-| GS_sim | [0, 1] | Groove consistency similarity |
+### E. Distribution-level (5)
 
-### F. Advanced Metrics (14)
+Sources: [SongMASS](https://arxiv.org/abs/2010.02305) ACM-MM 2020, [MusPy](https://github.com/salu133445/muspy) ISMIR 2020.
 
-Sources: rule-guided diffusion, Text2midi, MuseTok.
+| Metric | Symbol | Range |
+|--------|--------|-------|
+| Pitch Distribution | PD | [0, 1] |
+| Duration Distribution | DD | [0, 1] |
+| Scale Consistency Sim | SC_sim | [0, 1] |
+| Pitch Class Entropy Sim | PCE_sim | [0, 1] |
+| Groove Consistency Sim | GS_sim | [0, 1] |
 
-| Group | Metrics |
-|-------|---------|
-| KL divergence | kl_duration, kl_ioi, kl_pitch |
-| Overlapping area | oa_duration, oa_ioi, oa_pitch_range, oa_density |
-| Instrument coverage | ci_precision, ci_recall, ci_f1 |
-| Metadata / repetition / reconstruction | cts, cr_pred, cr_ref, recon_acc |
+### F. Advanced (14)
 
-### G. Structural Metrics (4)
+Sources: [GETMusic](https://arxiv.org/abs/2305.10841) IJCAI 2025, [Rule Guided](https://arxiv.org/abs/2410.08435) ICML 2024, [Text2midi](https://arxiv.org/abs/2412.16526) AAAI 2025, [MuseTok](https://arxiv.org/abs/2510.16273) ICASSP 2026.
 
-| Metric | Type | Range |
-|--------|------|-------|
-| Chord Histogram Entropy | Single | [0, log2(C)] |
-| N-gram Diversity | Single | [0, 1] |
-| Melody Matchness | Pair | [0, 1] |
-| Tonal Distance | Pair | [0, inf) |
+| Metric | Symbol | Range |
+|--------|--------|-------|
+| KL Divergence (Duration) | KL_dur | [0, ∞) |
+| KL Divergence (IOI) | KL_ioi | [0, ∞) |
+| KL Divergence (Pitch) | KL_pitch | [0, ∞) |
+| Overlapping Area ×4 | OA | [0, 1] |
+| Instrument Coverage ×3 | CI | [0, 1] |
+| Correct Time Signature | CTS | {0, 1} |
+| Compression Ratio ×2 | CR | [0, ∞) |
+| Reconstruction Accuracy | ReconAcc | [0, 1] |
 
-### H. Rhythmic & Temporal Metrics (4 single-file + 2 pairwise)
+### G. Structural (4)
 
-Sources: [D3PIA](https://github.com/jech2/D3PIA), [mir_eval](https://github.com/craffel/mir_eval).
+Sources: [Papadopoulos & Peeters](https://hal.science/hal-00726774) ISMIR 2012, [Yang & Lerch](https://link.springer.com/article/10.1007/s00521-018-3548-1) NCA 2018, [Mongeau & Sankoff](https://link.springer.com/article/10.1007/BF00788892) CH 1990, [Harte et al.](https://dl.acm.org/doi/10.1145/1180639.1180720) ACM MM 2006.
 
 | Metric | Symbol | Type | Range |
 |--------|--------|------|-------|
-| Mean Inter-Onset Interval | IOI | Single | [0, inf) |
-| Rhythmic Intensity | RI | Single | [0, inf) |
-| Rhythmic Density | RD | Single | [0, 1] |
-| Voice Number | VN | Single | [0, inf) |
-| Onset XOR Distance | XOR | Pair | [0, 1] |
-| Note Overlap | NOvlp | Pair | [0, 1] |
+| Chord Histogram Entropy | CHE | single | [0, log₂C] |
+| N-gram Diversity | Ngram | single | [0, 1] |
+| Melody Matchness | MM | pair | [0, 1] |
+| Tonal Distance | TD | pair | [0, ∞) |
 
-## Research Notes
+### H. Rhythmic/Temporal Single-file (4)
 
-- FGG uses POP909 accompaniment generation at 16th-note resolution and reports % out-of-key notes, direct chord accuracy, chord progression similarity, chord IoU, and piano-roll IoU. The package implements the reproducible local-MIDI parts of that evaluation: OOK, Viterbi chord accuracy, pitch/duration overlaps, note overlap, and structural similarities.
-- The FGG paper’s arXiv HTML reports Table 1 values: FGG % out-of-key notes 0.0%, direct chord accuracy 0.485, chord similarity 0.767, chord IoU 0.769, and piano-roll IoU 0.281; GETMusic scores lower on the same table. These values are model-generation results, not hard-coded package tests.
-- D3PIA’s demo page exposes POP909 sample MIDI for GT, D3PIA, Polyffusion, C&E-E, WholeSongGen, FGG, and leadsheet models; the validation procedure can download those MIDIs and run `pair_eval()` / `compute_ca()` locally.
+Source: [D3PIA](https://github.com/jech2/D3PIA) ICASSP 2026, MIDISym feature extraction.
 
-## Package Structure
+| Metric | Symbol | Range |
+|--------|--------|-------|
+| Mean IOI | IOI | [0, ∞) |
+| Rhythmic Intensity | RI | [0, ∞) |
+| Rhythmic Density | RD | [0, 1] |
+| Voice Number | VN | [0, ∞) |
 
-```
-smg_metric/
-|-- pyproject.toml
-|-- README.md
-|-- test.py                    # Full 51-metric test script
-|-- data/                      # Classical + POP909 MIDI test files
-|-- smg_metrics/
-|   |-- __init__.py            # Public API exports
-|   |-- __main__.py            # python -m smg_metrics
-|   |-- py.typed               # PEP 561 marker
-|   |-- _io.py                 # Shared MIDI I/O
-|   |-- _stats.py              # Shared statistics
-|   |-- _edit.py               # Shared sequence editing
-|   |-- single.py              # single_file wrappers
-|   |-- pair.py                # pair_eval wrappers
-|   |-- rhythmic.py            # D3PIA + mir_eval rhythmic metrics
-|   |-- muspy_ext.py           # 13 MusPy metrics
-|   |-- note_f1.py             # 5 note-level pairwise metrics
-|   |-- similarity.py          # 2 bar-level similarity metrics
-|   |-- chord_accuracy.py      # Chord Accuracy HMM
-|   |-- distribution.py        # 6 distribution-level metrics
-|   |-- advanced.py            # 14 advanced metrics
-|   |-- structural.py          # 4 structural metrics
-|   +-- cli.py                 # CLI entry point
-```
+## v5.0 Changelog
 
-## Testing
+### New features
+- **Beat-level DP chord recognition** (music-x-lab algorithm): replaces bar-level Viterbi as default CA method
+- **D3PIA Grooving Pattern Similarity**: pairwise within-file XOR similarity metric
+- **`--only` flag**: select specific metrics for faster evaluation
+- **`--list-metrics`**: display all available metric names
+- **Short flags**: `-m`, `-p`, `-r`, `-d`, `-a`, `-S`, `-R` for faster CLI usage
+- **Lazy imports**: faster CLI startup time
 
-```bash
-python test.py
-python test.py data/
-python test.py --single-only file.mid
-python test.py --pair-only pred.mid ref.mid
-```
+### Removed
+- **OOK (Out-of-Key Rate)**: requires external key annotations, limited standalone utility
+- **Chord Similarity (CS)**: requires pretrained chord encoder model
 
-`test.py` validates:
-
-1. Single-file quality (13 metrics × N files)
-2. Single-file structural (2 metrics × N files)
-3. Single-file rhythmic/temporal (4 metrics × N files)
-4. Pairwise note/rhythmic/bar/chord/structural/distribution/advanced (32 metrics × N pairs)
-5. Self-consistency (12 checks × N files)
-
-## Citation
-
-If you use this toolkit, cite the relevant metric sources for the categories used:
-
-```bibtex
-@article{dong2020muspy,
-  title={MusPy: A Toolkit for Symbolic Music Generation},
-  author={Dong, Hao and others},
-  journal={Proc. ISMIR},
-  year={2020},
-  url={https://arxiv.org/abs/2008.01951}
-}
-
-@article{zhu2025fgg,
-  title={Efficient Fine-Grained Guidance for Diffusion Model Based Symbolic Music Generation},
-  author={Zhu, Tingyu and Liu, Haoyu and Wang, Ziyu and Jiang, Zhimin and Zheng, Zeyu},
-  journal={Proc. ICML},
-  year={2025},
-  url={https://arxiv.org/abs/2410.08435}
-}
-
-@inproceedings{choi2026d3pia,
-  title={D3PIA: A Discrete Denoising Diffusion Model for Piano Accompaniment Generation from Lead Sheet},
-  author={Choi, Eunjin and Kim, Hounsu and Bang, Hayeon and Kwon, Taegyun and Nam, Juhan},
-  booktitle={Proc. ICASSP},
-  year={2026}
-}
-
-@inproceedings{raffel2014mir_eval,
-  title={mir_eval: A Transparent Implementation of Common MIR Metrics},
-  author={Raffel, Colin and others},
-  booktitle={Proc. ISMIR},
-  year={2014}
-}
-```
+### Changed
+- **CA default method**: `'dp'` (beat-level) instead of `'viterbi'` (bar-level)
+- **Distribution metrics**: removed OOK (PD, DD, SC_sim, PCE_sim, GS_sim remain)
+- **Numpy**: removed `<2.0` upper bound
+- **Version**: 0.4.0 → 5.0.0
 
 ## License
 
-MIT. See [LICENCE](LICENCE).
+MIT — see [LICENCE](LICENCE).
+
+## Citation
+
+If you use smg-metrics in your research, please cite:
+
+```bibtex
+@software{smg_metrics,
+  title  = {smg-metrics: Objective Evaluation Metrics for Symbolic Music Generation},
+  author = {Temmie Pratt},
+  year   = {2026},
+  url    = {https://github.com/OlyMarco/smg_metric},
+}
+```

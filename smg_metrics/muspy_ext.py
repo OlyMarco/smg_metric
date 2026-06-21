@@ -7,7 +7,8 @@ References:
     - EBR: Dong et al., "Pypianoroll," ISMIR 2018 (LBD).
     - SC: Mogren, "C-RNN-GAN," NeurIPS Workshop 2016.
     - PISR / PR / EMR / DPC: Dong et al., "MuseGAN," AAAI 2018.
-    - Others: MusPy toolkit, Dong et al., ISMIR 2020.
+    - PE / N_p / N_pc / Range: Dong et al., "MusPy," ISMIR 2020.
+    - PCE / EBR / GS: Also used by XMusic (Zhang et al., TMM 2025).
 """
 
 from __future__ import annotations
@@ -95,7 +96,7 @@ def compute_all(
     root: int = 0,
     mode: str = "major",
 ) -> SingleFileResult:
-    """Compute all 12 single-file MusPy metrics for *midi_path*.
+    """Compute all 13 single-file MusPy metrics for *midi_path*.
 
     Args:
         midi_path: Path to a MIDI file.
@@ -103,7 +104,7 @@ def compute_all(
         mode: ``"major"`` or ``"minor"``.
 
     Returns:
-        A :class:`SingleFileResult` with all 12 metrics.
+        A :class:`SingleFileResult` with all 13 metrics.
 
     Raises:
         FileNotFoundError: If *midi_path* does not exist.

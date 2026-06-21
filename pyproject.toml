@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "smg-metrics"
-version = "0.4.0"
+version = "5.0.0"
 description = "Objective evaluation metrics for Symbolic Music Generation"
 readme = "README.md"
 license = "MIT"
@@ -13,19 +13,20 @@ authors = [
     {name = "Temmie Pratt"},
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Multimedia :: Sound/Audio :: MIDI",
 ]
 dependencies = [
     "muspy>=0.5.0",
     "miditoolkit>=1.0",
     "pretty-midi>=0.2.10",
-    "numpy>=1.24,<2.0",
+    "numpy>=1.24",
     "scipy>=1.10",
     "mir-eval>=0.7",
 ]

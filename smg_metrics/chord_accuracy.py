@@ -1,19 +1,27 @@
-"""Chord Accuracy (CA) via Viterbi HMM chord recognition.
+"""Chord Accuracy (CA) via rule-based chord recognition.
 
-Implements the chord inference algorithm from GETMusic's
-``magenta_chord_recognition.py`` (microsoft/muzic), which is a
-modified version of Google Magenta's ``chord_inference.py``.
+Implements two chord recognition backends and a beat-level comparison metric:
 
-The CA formula follows GETMusic Eq. 6:
+1. **DP method** (default, ``method='dp'``):
+   Beat-level chroma features + dynamic-programming decoder, adapted from
+   music-x-lab/midi-chord-recognition (Jiang, 2025).  Used by FGG
+   (Zhu et al., ICML 2025) for Direct Chord Accuracy (DCA).
+
+2. **Viterbi method** (``method='viterbi'``):
+   Bar-level HMM Viterbi decoder from GETMusic's ``magenta_chord_recognition.py``
+   (microsoft/muzic).  Used by GETMusic (Lv et al., IJCAI 2025) Eq. 6.
+
+The CA formula (both methods):
     CA = (1 / N) * sum_{j=1}^{N} 1(C'_j == C_j)
-where N = min(len(pred), len(ref)).
-
-Chord label format: ``'C:maj7'``, ``'G:7'``, ``'N.C.'`` (colon-separated).
+where N = number of comparison frames.
 
 References:
-    - Lv et al., "GETMusic," arXiv:2305.10841, 2023 (CA Eq. 6).
-    - Ren et al., "PopMAG," arXiv:2008.07703, ACM-MM 2020 (CA definition).
-    - Magenta chord_inference (Apache 2.0).
+    - Wang et al., "Pop909," ISMIR 2020 (DP method origin).
+    - Jiang, "MIDI Chord Recognition via Bar-Level Modeling," 2025.
+      https://github.com/music-x-lab/midi-chord-recognition
+    - Zhu et al., "FGG," ICML 2025, arXiv:2410.08435 (DCA definition).
+    - Lv et al., "GETMusic," IJCAI 2025, arXiv:2305.10841, Eq. 6.
+    - Ren et al., "PopMAG," ACM-MM 2020 (CA definition).
 """
 
 from __future__ import annotations
@@ -27,7 +35,7 @@ from typing import Union
 import numpy as np
 import miditoolkit
 
-__all__ = ["compute_ca", "midi_to_chords"]
+__all__ = ["compute_ca", "midi_to_chords", "midi_to_chords_dp"]
 
 # ── Constants (identical to GETMusic) ─────────────────────────────
 
@@ -199,32 +207,141 @@ def midi_to_chords(midi_path: Union[str, Path]) -> list[str]:
     return [_format_chord(chord) for chord in _viterbi(fl)]
 
 
-def compute_ca(pred_path: Union[str, Path], ref_path: Union[str, Path]) -> float:
-    """Compute Chord Accuracy between *pred* and *ref*.
+def midi_to_chords_dp(
+    midi_path: Union[str, Path],
+    extra_division: int = 2,
+    use_transition: bool = True,
+) -> list[str]:
+    """Infer per-beat chord labels using the DP method.
+
+    Uses beat-level chroma features and dynamic-programming decode from
+    music-x-lab/midi-chord-recognition.  Returns one label per beat.
 
     Reference:
-        Lv et al., "GETMusic," arXiv:2305.10841, 2023, Eq. 6.
+        Wang et al., "Pop909," ISMIR 2020.
+        Jiang, "MIDI Chord Recognition," 2025.
+        https://github.com/music-x-lab/midi-chord-recognition
+
+    Args:
+        midi_path: Path to a MIDI file.
+        extra_division: Sub-beat divisions (2 = half-beat).
+        use_transition: Apply transition penalties in DP.
+
+    Returns:
+        List of chord label strings, one per beat.
+    """
+    from smg_metrics.chord_recognition import recognize_chords
+
+    intervals = recognize_chords(midi_path, extra_division, use_transition)
+
+    # Expand interval labels to per-beat
+    import pretty_midi
+    pm = pretty_midi.PrettyMIDI(str(midi_path))
+    beats = pm.get_beats()
+    if len(beats) < 2 or not intervals:
+        return [iv.label for iv in intervals]
+
+    beat_labels: list[str] = []
+    iv_idx = 0
+    for bi, bt in enumerate(beats):
+        # Find which interval this beat falls in
+        while iv_idx < len(intervals) - 1 and intervals[iv_idx].end <= bt:
+            iv_idx += 1
+        if iv_idx < len(intervals) and intervals[iv_idx].start <= bt < intervals[iv_idx].end:
+            beat_labels.append(intervals[iv_idx].label)
+        else:
+            beat_labels.append('N')
+
+    return beat_labels
+
+
+def _normalize_label(label: str) -> str:
+    """Normalize a chord label to root:major_or_minor for comparison.
+
+    Maps detailed labels to simplified format for DCA evaluation.
+    Both DP and Viterbi outputs are normalised to the same space.
+
+    Args:
+        label: Chord label string.
+
+    Returns:
+        Normalized label like 'C:maj', 'A:min', or 'N'.
+    """
+    if label in ('N.C.', 'N', ''):
+        return 'N'
+
+    # Strip inversion and bass note
+    base = label.split('/')[0]
+
+    if ':' in base:
+        root, quality = base.split(':', 1)
+    else:
+        root = base
+        quality = 'maj'
+
+    q = quality.lower()
+    if q in ('m', 'min', 'min7', 'minmaj7', 'min6', 'min9', 'dim', 'dim7', 'hdim7'):
+        family = 'min'
+    else:
+        family = 'maj'
+
+    return f'{root}:{family}'
+
+
+def compute_ca(
+    pred_path: Union[str, Path],
+    ref_path: Union[str, Path],
+    method: str = "dp",
+) -> float:
+    """Compute Chord Accuracy between *pred* and *ref*.
+
+    Two methods are available:
+
+    - ``'dp'`` (default): Beat-level DP decoder from music-x-lab.
+      Used by FGG (Zhu et al., ICML 2025) for Direct Chord Accuracy.
+    - ``'viterbi'``: Bar-level HMM Viterbi decoder from GETMusic.
+      Used by GETMusic (Lv et al., IJCAI 2025) Eq. 6.
+
+    Reference:
+        Zhu et al., "FGG," ICML 2025, arXiv:2410.08435.
+        Lv et al., "GETMusic," IJCAI 2025, arXiv:2305.10841, Eq. 6.
 
     Args:
         pred_path: Path to the predicted / generated MIDI file.
         ref_path:  Path to the reference / ground-truth MIDI file.
+        method:    ``'dp'`` or ``'viterbi'``.
 
     Returns:
         CA value in [0, 1].
     """
-    sp = midi_to_chords(pred_path)
-    sr = midi_to_chords(ref_path)
+    if method == 'dp':
+        sp = midi_to_chords_dp(pred_path)
+        sr = midi_to_chords_dp(ref_path)
+    elif method == 'viterbi':
+        sp = midi_to_chords(pred_path)
+        sr = midi_to_chords(ref_path)
+    else:
+        raise ValueError(f"Unknown method: {method!r}. Use 'dp' or 'viterbi'.")
+
     n = min(len(sp), len(sr))
     if n == 0:
         return 0.0
-    return sum(1 for i in range(n) if sp[i] == sr[i]) / n
+
+    matches = 0
+    for i in range(n):
+        if _normalize_label(sp[i]) == _normalize_label(sr[i]):
+            matches += 1
+    return matches / n
+
 
 # ── CLI ───────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     import sys
     if len(sys.argv) < 3:
-        print("Usage: python -m smg_metrics.chord_accuracy <pred.mid> <ref.mid>")
+        print("Usage: python -m smg_metrics.chord_accuracy <pred.mid> <ref.mid> [method]")
+        print("  method: dp (default) or viterbi")
         sys.exit(1)
-    ca = compute_ca(sys.argv[1], sys.argv[2])
-    print(f"CA = {ca:.4f}")
+    method = sys.argv[3] if len(sys.argv) > 3 else 'dp'
+    ca = compute_ca(sys.argv[1], sys.argv[2], method=method)
+    print(f"CA ({method}) = {ca:.4f}")
