@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Full metric test script for smg_metrics v5.1.
+"""Full metric test script for smg_metrics v5.2.
 
 Tests ALL 53 metrics on user-specified MIDI files (single-file)
 and every file pair (pairwise), prints a summary table, and
@@ -43,11 +43,12 @@ from smg_metrics import (
     distribution_eval,
     advanced_eval,
     grooving_pattern_similarity,
+    clear_cs_model_cache,
 )
 
 SEP = "=" * 72
 
-# ── Metric counts (v5.1) ─────────────────────────────────────────
+# ── Metric counts (v5.2) ─────────────────────────────────────────
 N_SINGLE_QUALITY = 14
 N_SINGLE_STRUCT = 2
 N_SINGLE_RHYTHM = 4
@@ -255,7 +256,7 @@ def _collect_midis(args: argparse.Namespace) -> list[Path]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description=f"smg_metrics v5.1 — Full Metric Test ({N_TOTAL} metrics)",
+        description=f"smg_metrics v5.2 — Full Metric Test ({N_TOTAL} metrics)",
         epilog=(
             "Examples:\n"
             "  python test.py data/gen/ data/gt/            # all MIDI in dirs\n"
@@ -282,7 +283,7 @@ def main() -> None:
     n_pairs = n_files * (n_files - 1) // 2
 
     print(SEP)
-    print(f"smg_metrics v5.1 — Full Metric Test ({N_TOTAL} metrics)")
+    print(f"smg_metrics v5.2 — Full Metric Test ({N_TOTAL} metrics)")
     print(SEP)
     print(f"  MIDI files : {n_files}")
     print(f"  File pairs : {n_pairs}")
@@ -323,6 +324,12 @@ def main() -> None:
     print(f"  Total tests            : {total_tests}")
     print(f"  Self-consist           : {'ALL PASS' if all_pass else 'SKIP' if only else 'FAIL'}")
     print(f"  Time                   : {elapsed:.1f}s")
+    
+    # Clean up CS model cache to free memory (v5.2+)
+    if not args.single_only:
+        cleared = clear_cs_model_cache()
+        if cleared > 0:
+            print(f"  CS model cache cleared : {cleared} model(s)")
 
     if not all_pass and not only:
         sys.exit(1)

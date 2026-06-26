@@ -118,7 +118,7 @@ def pair_eval(
             warnings.warn(
                 f"CS metric skipped: {e}\n"
                 "Download model weights from: "
-                "https://github.com/OlyMarco/smg_metric/releases/tag/v5.1-models",
+                "https://github.com/OlyMarco/smg_metric/blob/main/smg_metrics/model_weights/polydis-v1-chd_encoder_only.pt",
                 UserWarning
             )
             cs_val = 0.0

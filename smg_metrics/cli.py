@@ -1,4 +1,4 @@
-"""CLI entry point for smg_metrics v5.1 evaluation.
+"""CLI entry point for smg_metrics evaluation.
 
 Usage::
 
@@ -233,7 +233,7 @@ def _run_batch(pred_dir: str, ref_dir: str, root: int, mode: str) -> dict[str, f
 def main() -> None:
     p = argparse.ArgumentParser(
         prog="smg-eval",
-        description="smg-metrics v5.1 — Objective evaluation metrics for Symbolic Music Generation",
+        description="smg-metrics v5.2 — Objective evaluation metrics for Symbolic Music Generation",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"

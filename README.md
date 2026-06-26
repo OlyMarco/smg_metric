@@ -155,7 +155,7 @@ The **Chord Similarity (CS)** metric requires pretrained model weights:
 ```bash
 # Download lightweight model (29 MB, recommended)
 cd smg_metrics/model_weights
-wget https://github.com/OlyMarco/smg_metric/releases/download/v5.1-models/polydis-v1-chd_encoder_only.pt
+wget https://github.com/OlyMarco/smg_metric/blob/main/smg_metrics/model_weights/polydis-v1-chd_encoder_only.pt
 ```
 
 ### Model Details
@@ -382,6 +382,37 @@ Source: [D3PIA](https://github.com/jech2/D3PIA) ICASSP 2026, MIDISym feature ext
 | Rhythmic Intensity | RI | [0, ∞) |
 | Rhythmic Density | RD | [0, 1] |
 | Voice Number | VN | [0, ∞) |
+
+## v5.2 Changelog
+
+### Optimizations
+- **CS Model Caching**: Chord Similarity model now cached for batch evaluation
+  - Model loaded once and reused across multiple `compute_cs()` calls
+  - ~1.6× faster per call after initial load, ~39% time savings on large batches
+  - Example: 153 file pairs reduced from 34.6s → 21.2s
+  - Thread-safe caching with automatic device management
+  - New API: `clear_cs_model_cache()` to manually free GPU/CPU memory after batch processing
+- **Memory Management**: Users can explicitly release CS model memory when needed
+
+### API Changes
+- **New function**: `clear_cs_model_cache()` — Clear cached CS models to free memory
+- **Improved**: `compute_cs()` now automatically caches model for subsequent calls
+
+### Changed
+- **Version**: 5.1.0 → 5.2.0
+- **Performance**: Batch CS evaluation significantly faster (model loaded once vs. per-call)
+
+### Example
+```python
+from smg_metrics import compute_cs, clear_cs_model_cache
+
+# Batch evaluation - model loaded once, reused for all pairs
+for pred, ref in file_pairs:
+    cs = compute_cs(pred, ref)  # Fast after first call
+    
+# Free memory after batch
+clear_cs_model_cache()  # Returns: 1 (number of models cleared)
+```
 
 ## v5.1 Changelog
 

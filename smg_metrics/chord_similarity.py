@@ -46,7 +46,13 @@ __all__ = [
     "ChordEncoder",
     "LightweightChordModel",
     "extract_chord_vectors",
+    "clear_cs_model_cache",
 ]
+
+# ── Model cache for batch evaluation ─────────────────────────────
+# Stores loaded models keyed by (weights_path, device) to avoid
+# repeated loading during multi-file evaluation.
+_MODEL_CACHE: dict[tuple[str, str], LightweightChordModel] = {}
 
 # Pitch class names (consistent with chord_recognition.py)
 _PITCH_NAMES = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B']
@@ -281,6 +287,54 @@ def extract_chord_vectors(midi_path: Union[str, Path]) -> np.ndarray:
     
     return np.array(segments) if segments else np.zeros((0, 8, 36))
 
+def _get_cached_model(
+    weights_path: Union[str, Path],
+    device: str,
+) -> LightweightChordModel:
+    """Get or create cached model instance.
+    
+    This function implements a simple caching mechanism to avoid reloading
+    the model weights (28.90 MB) on every compute_cs() call. The model is
+    cached by (weights_path, device) and reused across multiple evaluations.
+    
+    Args:
+        weights_path: Path to model weights file
+        device: 'cuda' or 'cpu'
+        
+    Returns:
+        Cached or newly loaded LightweightChordModel
+    """
+    global _MODEL_CACHE
+    cache_key = (str(weights_path), device)
+    
+    if cache_key not in _MODEL_CACHE:
+        torch_device = torch.device(device)
+        model = LightweightChordModel.from_pretrained(weights_path, device=torch_device)
+        _MODEL_CACHE[cache_key] = model
+    
+    return _MODEL_CACHE[cache_key]
+
+def clear_cs_model_cache() -> int:
+    """Clear the CS model cache to free GPU/CPU memory.
+    
+    Use this after batch evaluation to release model memory, or when
+    switching between different model files or devices.
+    
+    Returns:
+        Number of cached models cleared
+        
+    Example:
+        >>> # Batch evaluation
+        >>> for pred, ref in file_pairs:
+        ...     cs = compute_cs(pred, ref)  # Model loaded once
+        >>> clear_cs_model_cache()  # Free memory after batch
+        1
+    """
+    global _MODEL_CACHE
+    count = len(_MODEL_CACHE)
+    _MODEL_CACHE.clear()
+    return count
+
 
 def compute_cs(
     midi1_path: Union[str, Path],
@@ -346,10 +400,9 @@ def compute_cs(
     # Setup device
     if device == 'auto':
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    torch_device = torch.device(device)
     
-    # Load model
-    model = LightweightChordModel.from_pretrained(weights_path, device=torch_device)
+    # Get cached model (or load if first call)
+    model = _get_cached_model(weights_path, device)
     
     # Extract chord vectors
     segs1 = extract_chord_vectors(midi1_path)
@@ -363,8 +416,8 @@ def compute_cs(
     # Compute cosine similarities
     cos_sims = []
     for i in range(min_segs):
-        c1 = torch.from_numpy(segs1[i]).float().unsqueeze(0).to(torch_device)
-        c2 = torch.from_numpy(segs2[i]).float().unsqueeze(0).to(torch_device)
+        c1 = torch.from_numpy(segs1[i]).float().unsqueeze(0).to(model.device)
+        c2 = torch.from_numpy(segs2[i]).float().unsqueeze(0).to(model.device)
         
         z1 = model.encode(c1)
         z2 = model.encode(c2)

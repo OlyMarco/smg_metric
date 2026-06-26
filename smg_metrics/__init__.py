@@ -9,7 +9,7 @@ from smg_metrics.single import (
 from smg_metrics.pair import pair_eval, PairResult, pair_eval_structural
 from smg_metrics.chord_accuracy import compute_ca, midi_to_chords, midi_to_chords_dp
 from smg_metrics.chord_recognition import recognize_chords, recognize_chords_beat
-from smg_metrics.chord_similarity import compute_cs, extract_chord_vectors
+from smg_metrics.chord_similarity import compute_cs, extract_chord_vectors, clear_cs_model_cache
 from smg_metrics.out_of_key import compute_ook, compute_ook_percentage
 from smg_metrics.distribution import DistributionResult, compute_all as distribution_eval
 from smg_metrics.advanced import AdvancedResult, compute_all as advanced_eval
@@ -68,6 +68,7 @@ __all__ = [
     "recognize_chords_beat",
     "compute_cs",
     "extract_chord_vectors",
+    "clear_cs_model_cache",
     "compute_ook",
     "compute_ook_percentage",
     "chord_histogram_entropy",
@@ -93,4 +94,4 @@ __all__ = [
     "rhythmic",
 ]
 
-__version__ = "5.0.0"
+__version__ = "5.2.0"
