@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Full metric test script for smg_metrics v5.0.
+"""Full metric test script for smg_metrics v5.1.
 
-Tests ALL 51 metrics on user-specified MIDI files (single-file)
+Tests ALL 53 metrics on user-specified MIDI files (single-file)
 and every file pair (pairwise), prints a summary table, and
 validates self-consistency (same file -> perfect scores).
 
@@ -47,20 +47,20 @@ from smg_metrics import (
 
 SEP = "=" * 72
 
-# ── Metric counts (v5.0) ─────────────────────────────────────────
-N_SINGLE_QUALITY = 13
+# ── Metric counts (v5.1) ─────────────────────────────────────────
+N_SINGLE_QUALITY = 14
 N_SINGLE_STRUCT = 2
 N_SINGLE_RHYTHM = 4
-N_SINGLE = N_SINGLE_QUALITY + N_SINGLE_STRUCT + N_SINGLE_RHYTHM  # 19
+N_SINGLE = N_SINGLE_QUALITY + N_SINGLE_STRUCT + N_SINGLE_RHYTHM  # 20
 
-N_PAIR_CORE = 10
+N_PAIR_CORE = 11
 N_PAIR_STRUCT = 2
 N_PAIR_DIST = 5
 N_PAIR_ADV = 14
 N_PAIR_RHYTHM = 1  # grooving_pattern_similarity
-N_PAIR = N_PAIR_CORE + N_PAIR_STRUCT + N_PAIR_DIST + N_PAIR_ADV + N_PAIR_RHYTHM  # 32
+N_PAIR = N_PAIR_CORE + N_PAIR_STRUCT + N_PAIR_DIST + N_PAIR_ADV + N_PAIR_RHYTHM  # 33
 
-N_TOTAL = N_SINGLE + N_PAIR  # 51
+N_TOTAL = N_SINGLE + N_PAIR  # 53
 N_SELF_CHECKS = 12
 
 
@@ -255,7 +255,7 @@ def _collect_midis(args: argparse.Namespace) -> list[Path]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description=f"smg_metrics v5.0 — Full Metric Test ({N_TOTAL} metrics)",
+        description=f"smg_metrics v5.1 — Full Metric Test ({N_TOTAL} metrics)",
         epilog=(
             "Examples:\n"
             "  python test.py data/gen/ data/gt/            # all MIDI in dirs\n"
@@ -267,8 +267,8 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("files", nargs="*", help="MIDI files or directories (default: data/gen/ + data/gt/)")
-    parser.add_argument("--single-only", action="store_true", help="Only run single-file metrics (19)")
-    parser.add_argument("--pair-only", action="store_true", help="Only run pairwise metrics (32, needs >= 2 files)")
+    parser.add_argument("--single-only", action="store_true", help="Only run single-file metrics (20)")
+    parser.add_argument("--pair-only", action="store_true", help="Only run pairwise metrics (33, needs >= 2 files)")
     parser.add_argument("--only", nargs="+", metavar="METRIC", help="Only test specified metrics")
     args = parser.parse_args()
 
@@ -282,7 +282,7 @@ def main() -> None:
     n_pairs = n_files * (n_files - 1) // 2
 
     print(SEP)
-    print(f"smg_metrics v5.0 — Full Metric Test ({N_TOTAL} metrics)")
+    print(f"smg_metrics v5.1 — Full Metric Test ({N_TOTAL} metrics)")
     print(SEP)
     print(f"  MIDI files : {n_files}")
     print(f"  File pairs : {n_pairs}")

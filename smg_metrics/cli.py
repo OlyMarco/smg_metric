@@ -1,14 +1,14 @@
-"""CLI entry point for smg_metrics v5.0 evaluation.
+"""CLI entry point for smg_metrics v5.1 evaluation.
 
 Usage::
 
-    # Single-file quality (13 MusPy metrics)
+    # Single-file quality (14 metrics: 13 MusPy + OOK)
     smg-eval -m generated.mid
 
     # Single-file + structural + rhythmic
     smg-eval -m generated.mid -S -R
 
-    # Pairwise note-level + bar-level + chord-level + rhythmic (10 metrics)
+    # Pairwise note-level + bar-level + chord-level + rhythmic (11 metrics incl. CS)
     smg-eval -p generated.mid -r reference.mid
 
     # Distribution-level metrics (PD, DD, SC_sim, PCE_sim, GS_sim)
@@ -92,6 +92,7 @@ def _import_adv():
 _SINGLE_METRICS = {
     'pce', 'ebr', 'gs', 'sc', 'pisr', 'polyphony', 'polyphony_rate',
     'pitch_range', 'n_pitches_used', 'n_pitch_classes_used', 'emr', 'pe', 'dpc',
+    'ook',  # Out-of-Key percentage (FGG 2025)
 }
 
 _STRUCTURAL_SINGLE_METRICS = {'che', 'ngram_div'}
@@ -99,7 +100,7 @@ _RHYTHMIC_SINGLE_METRICS = {'mean_ioi', 'rhythmic_intensity', 'rhythmic_density'
 
 _PAIR_METRICS = {
     'note_f1', 'notei_f1', 'mel_f1', 'i_iou', 'ver',
-    'sim_chr', 'sim_grv', 'ca', 'onset_xor', 'note_overlap',
+    'sim_chr', 'sim_grv', 'ca', 'cs', 'onset_xor', 'note_overlap',
 }
 
 _STRUCTURAL_PAIR_METRICS = {'melody_match', 'tonal_dist'}
@@ -177,6 +178,13 @@ def _run_gs(pred: str, ref: str, only: set[str] | None) -> dict[str, Any]:
     val = grooving_pattern_similarity(pred, ref)
     return {'grooving_pattern_similarity': val}
 
+def _run_ook(midi: str, only: set[str] | None) -> dict[str, Any]:
+    from smg_metrics.out_of_key import compute_ook
+    if only and 'ook' not in only:
+        return {}
+    val = compute_ook(midi)
+    return {'ook': val}
+
 def _run_batch(pred_dir: str, ref_dir: str, root: int, mode: str) -> dict[str, float]:
     single_file, _, _ = _import_single()
     pair_eval, _ = _import_pair()
@@ -225,7 +233,7 @@ def _run_batch(pred_dir: str, ref_dir: str, root: int, mode: str) -> dict[str, f
 def main() -> None:
     p = argparse.ArgumentParser(
         prog="smg-eval",
-        description="smg-metrics v5.0 — Objective evaluation metrics for Symbolic Music Generation",
+        description="smg-metrics v5.1 — Objective evaluation metrics for Symbolic Music Generation",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"
@@ -240,17 +248,17 @@ def main() -> None:
             "  smg-eval --pred_dir ./pred/ --ref_dir ./ref/\n"
             "\n"
             "Metric categories:\n"
-            "  Single-file (13):  PCE, EBR, GS, SC, PISR, Poly, PR, Range, Np, Npc, EMR, PE, DPC\n"
+            "  Single-file (14):  PCE, EBR, GS, SC, PISR, Poly, PR, Range, Np, Npc, EMR, PE, DPC, OOK\n"
             "  Structural (4):    CHE, Ngram, MelodyMatch, TonalDist\n"
             "  Rhythmic (5):      IOI, RI, RD, VN, GS_d3pia\n"
-            "  Pairwise (10):     F1, F1i, F1mel, I-IoU, VER, simChr, simGrv, CA, XOR, NOvlp\n"
+            "  Pairwise (11):     F1, F1i, F1mel, I-IoU, VER, simChr, simGrv, CA, CS, XOR, NOvlp\n"
             "  Distribution (5):  PD, DD, SC_sim, PCE_sim, GS_sim\n"
             "  Advanced (14):     KL×3, OA×4, CI×3, CTS, CR×2, ReconAcc\n"
         ),
     )
     # File arguments
     p.add_argument("-m", "--music", metavar="PATH",
-                   help="Single MIDI file for quality metrics (13 MusPy)")
+                   help="Single MIDI file for quality metrics (14 metrics: 13 MusPy + OOK)")
     p.add_argument("-p", "--pred", metavar="PATH",
                    help="Predicted / generated MIDI file")
     p.add_argument("-r", "--ref", metavar="PATH",
@@ -294,7 +302,7 @@ def main() -> None:
     # --list-metrics
     if args.list_metrics:
         print("Available metrics:")
-        print(f"\n  Single-file (13):")
+        print(f"\n  Single-file (14):")
         for m in sorted(_SINGLE_METRICS):
             print(f"    {m}")
         print(f"\n  Structural single-file (2):")
@@ -303,7 +311,7 @@ def main() -> None:
         print(f"\n  Rhythmic single-file (4):")
         for m in sorted(_RHYTHMIC_SINGLE_METRICS):
             print(f"    {m}")
-        print(f"\n  Pairwise (10):")
+        print(f"\n  Pairwise (11):")
         for m in sorted(_PAIR_METRICS):
             print(f"    {m}")
         print(f"\n  Structural pairwise (2):")
@@ -348,6 +356,13 @@ def main() -> None:
             if not args.json:
                 print(f"\n{'='*60}\nSingle-file: {args.music}\n{'='*60}\n")
                 _print_result(result)
+            
+            # Add OOK if requested (part of single-file metrics)
+            ook_result = _run_ook(args.music, only)
+            if ook_result:
+                if not args.json:
+                    _print_result(ook_result)
+                result.update(ook_result)
 
         if needs_struct_s:
             struct = _run_structural_single(args.music, only)

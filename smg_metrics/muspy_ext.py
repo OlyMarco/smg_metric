@@ -1,6 +1,7 @@
 """MusPy single-file quality metrics.
 
-Wraps 13 MusPy metrics that evaluate a MIDI file without any reference.
+Wraps 14 quality metrics that evaluate a MIDI file without any reference:
+13 MusPy metrics + Out-of-Key (OOK) percentage.
 
 References:
     - PCE / GS: Wu & Yang, "The Jazz Transformer," ISMIR 2020.
@@ -9,6 +10,7 @@ References:
     - PISR / PR / EMR / DPC: Dong et al., "MuseGAN," AAAI 2018.
     - PE / N_p / N_pc / Range: Dong et al., "MusPy," ISMIR 2020.
     - PCE / EBR / GS: Also used by XMusic (Zhang et al., TMM 2025).
+    - OOK: Zhu et al., "Flexible Music Generation," ICML 2025.
 """
 
 from __future__ import annotations
@@ -20,12 +22,14 @@ from typing import Union
 
 import muspy
 
+from smg_metrics.out_of_key import compute_ook
+
 __all__ = ["SingleFileResult", "compute_all"]
 
 
 @dataclass(frozen=True, slots=True)
 class SingleFileResult:
-    """Container for 13 single-file quality metrics.
+    """Container for 14 single-file quality metrics.
 
     Attributes:
         pce:  Pitch Class Entropy — [0, log2(12)].
@@ -54,6 +58,8 @@ class SingleFileResult:
               Reference: MusPy, Dong et al., ISMIR 2020.
         dpc:  Drum Pattern Consistency — [0, 1].
               Reference: Dong et al., "MuseGAN," AAAI 2018.
+        ook:  Out-of-Key percentage — [0, 100].
+              Reference: Zhu et al., "Flexible Music Generation," ICML 2025.
     """
     pce: float
     ebr: float
@@ -68,6 +74,7 @@ class SingleFileResult:
     emr: float
     pe: float
     dpc: float
+    ook: float
 
     def to_dict(self) -> dict[str, float | int]:
         """Return metrics as a plain dict."""
@@ -96,7 +103,9 @@ def compute_all(
     root: int = 0,
     mode: str = "major",
 ) -> SingleFileResult:
-    """Compute all 13 single-file MusPy metrics for *midi_path*.
+    """Compute all 14 single-file quality metrics for *midi_path*.
+
+    Includes 13 MusPy metrics + Out-of-Key (OOK) percentage.
 
     Args:
         midi_path: Path to a MIDI file.
@@ -104,7 +113,7 @@ def compute_all(
         mode: ``"major"`` or ``"minor"``.
 
     Returns:
-        A :class:`SingleFileResult` with all 13 metrics.
+        A :class:`SingleFileResult` with all 14 metrics.
 
     Raises:
         FileNotFoundError: If *midi_path* does not exist.
@@ -137,4 +146,5 @@ def compute_all(
         emr=_safe_float(muspy.empty_measure_rate, music, measure_res),
         pe=_safe_float(muspy.pitch_entropy, music),
         dpc=_safe_float(muspy.drum_pattern_consistency, music),
+        ook=_safe_float(compute_ook, midi_path),
     )

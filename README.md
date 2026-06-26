@@ -1,19 +1,19 @@
 # smg-metrics
 
-> **S**ymbolic **M**usic **G**eneration **Metrics** — 51 objective evaluation metrics, zero config.
+> **S**ymbolic **M**usic **G**eneration **Metrics** — 53 objective evaluation metrics, zero config.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENCE)
 [![PyPI version](https://img.shields.io/pypi/v/smg-metrics.svg)](https://pypi.org/project/smg-metrics/)
 
-**8 categories, 51 metrics, 20 papers/projects (1990–2026), fully typed & tested.**
+**8 categories, 53 metrics, 21 papers/projects (1990–2026), fully typed & tested.**
 
 | Category | Count | Latest source | Year |
 |----------|-------|---------------|------|
-| A. Single-file Quality | 13 | [MusPy](https://arxiv.org/abs/2008.01951) / [XMusic](https://arxiv.org/abs/2501.08809) | 2025 |
+| A. Single-file Quality | 14 | [FGG](https://arxiv.org/abs/2410.08435) / [MusPy](https://arxiv.org/abs/2008.01951) / [XMusic](https://arxiv.org/abs/2501.08809) | 2025 |
 | B. Note-level Pairwise | 5 | [Ou et al.](https://arxiv.org/abs/2408.15176) | 2025 |
 | C. Bar-level Pairwise | 2 | [MuseMorphose](https://arxiv.org/abs/2105.04090) | 2023 |
-| D. Chord-level Pairwise | 1 | [FGG](https://arxiv.org/abs/2410.08435) / [music-x-lab](https://github.com/music-x-lab/midi-chord-recognition) | 2025 |
+| D. Chord-level Pairwise | 2 | [FGG](https://arxiv.org/abs/2410.08435) / [Wang et al. ISMIR](https://arxiv.org/abs/2008.07122) | 2025/2020 |
 | E. Distribution-level | 5 | [SongMASS](https://arxiv.org/abs/2010.02305) | 2020 |
 | F. Advanced | 14 | [Text2midi](https://arxiv.org/abs/2412.16526) | 2025 |
 | G. Structural | 4 | [MuseTok](https://arxiv.org/abs/2510.16273) | 2026 |
@@ -26,19 +26,23 @@ pip install smg-metrics
 ```
 
 ```python
-from smg_metrics import single_file, single_file_rhythmic, pair_eval
+from smg_metrics import single_file, single_file_rhythmic, pair_eval, compute_ook
 
 # Single-file quality (13 MusPy metrics)
 quality = single_file("generated.mid")
 print(quality.pce, quality.ebr, quality.gs)
 
+# Out-of-Key percentage (FGG 2025)
+ook = compute_ook("generated.mid")
+print(f"OOK: {ook:.2f}%")
+
 # Rhythmic metrics (4 D3PIA-style)
 rhythm = single_file_rhythmic("generated.mid")
 print(rhythm.mean_ioi, rhythm.rhythmic_density)
 
-# Pairwise comparison (10 metrics)
+# Pairwise comparison (11 metrics including deep chord similarity)
 pair = pair_eval("generated.mid", "reference.mid")
-print(pair.note_f1, pair.sim_chr, pair.ca)
+print(pair.note_f1, pair.sim_chr, pair.ca, pair.cs)
 ```
 
 ```bash
@@ -54,6 +58,10 @@ smg-eval -m gen.mid --only pce ebr gs --json
 ```bash
 pip install smg-metrics
 
+# Optional: Install torch for deep chord similarity (CS metric)
+pip install smg-metrics[torch]
+# Or: pip install torch>=2.0.0
+
 # Or install from source:
 git clone https://github.com/OlyMarco/smg_metric.git
 cd smg_metric && pip install -e .
@@ -65,6 +73,7 @@ cd smg_metric && pip install -e .
 | [`miditoolkit`](https://github.com/music-x-lab/midi-toolkit) | >= 1.0 | MIDI parsing |
 | [`pretty-midi`](https://github.com/craffel/pretty-midi) | >= 0.2.10 | Beat tracking & bar-level parsing |
 | [`mir-eval`](https://github.com/craffel/mir_eval) | >= 0.7 | Note-overlap metric |
+| [`torch`](https://pytorch.org/) | >= 2.0.0 | **Optional**: Deep chord similarity (CS metric) |
 | `numpy` | >= 1.24 | Numerical computation |
 | `scipy` | >= 1.10 | Scientific computing |
 
@@ -75,10 +84,12 @@ from smg_metrics import (
     single_file,                # 13 MusPy quality metrics
     single_file_structural,     # 2 structural single-file metrics
     single_file_rhythmic,       # 4 D3PIA-style rhythmic metrics
-    pair_eval,                  # 10 core pairwise metrics
+    pair_eval,                  # 11 core pairwise metrics (incl. CS)
     pair_eval_structural,       # 2 structural pairwise metrics
     distribution_eval,          # 5 distribution-level metrics
     advanced_eval,              # 14 advanced metrics
+    compute_ook,                # Out-of-Key percentage (FGG 2025)
+    compute_cs,                 # Chord Similarity (Wang et al. 2020)
 )
 ```
 
@@ -87,12 +98,84 @@ from smg_metrics import (
 | `SingleFileResult` | pce, ebr, gs, sc, pisr, polyphony, polyphony_rate, pitch_range, n_pitches_used, n_pitch_classes_used, emr, pe, dpc | 13 |
 | `StructuralSingleResult` | che, ngram_div | 2 |
 | `RhythmicResult` | mean_ioi, rhythmic_intensity, rhythmic_density, voice_number | 4 |
-| `PairResult` | note_f1, notei_f1, mel_f1, i_iou, ver, sim_chr, sim_grv, ca, onset_xor, note_overlap | 10 |
+| `PairResult` | note_f1, notei_f1, mel_f1, i_iou, ver, sim_chr, sim_grv, ca, cs, onset_xor, note_overlap | 11 |
 | `StructuralPairResult` | melody_match, tonal_dist | 2 |
 | `DistributionResult` | pd, dd, sc_sim, pce_sim, gs_sim | 5 |
 | `AdvancedResult` | kl_duration, kl_ioi, kl_pitch, oa_duration, oa_ioi, oa_pitch_range, oa_density, ci_precision, ci_recall, ci_f1, cts, cr_pred, cr_ref, recon_acc | 14 |
 
 Every result container is a frozen dataclass with `.to_dict()`.
+
+### Chord Recognition
+
+```python
+from smg_metrics import recognize_chords, compute_ca, compute_cs
+
+# Advanced DP-based chord recognition (17 qualities + inversions)
+chords = recognize_chords("music.mid")
+for interval in chords:
+    print(f"{interval.start:.2f}s - {interval.end:.2f}s: {interval.label}")
+# Output: 0.00s - 2.50s: C:maj
+#         2.50s - 5.00s: G:7/5  (second inversion)
+
+# Chord Accuracy (rule-based DP method, FGG 2025)
+ca = compute_ca("generated.mid", "reference.mid")
+print(f"Chord Accuracy: {ca:.2%}")
+
+# Chord Similarity (deep embedding, Wang et al. 2020)
+cs = compute_cs("generated.mid", "reference.mid")
+print(f"Chord Similarity: {cs:.4f}")
+```
+
+**Note**: CS metric requires downloading model weights (29 MB). See [Model Weights](#model-weights) section below.
+
+### Out-of-Key Notes
+
+```python
+from smg_metrics import compute_ook
+
+# Compute percentage of 16th-note steps with out-of-key notes
+ook = compute_ook("generated.mid")
+print(f"Out-of-Key: {ook:.2f}%")
+
+# Get detailed breakdown
+ook, details = compute_ook("generated.mid", return_details=True)
+print(f"Key: {details['key']}")
+print(f"OOK steps: {details['ook_steps']}/{details['total_steps']}")
+print(f"OOK notes: {details['ook_notes']}")
+```
+
+**Reference**: FGG (Zhu et al., ICML 2025) uses OOK to measure dissonance. Well-controlled generation should have OOK ≈ 0–2%.
+
+## Model Weights
+
+The **Chord Similarity (CS)** metric requires pretrained model weights:
+
+### Quick Download
+
+```bash
+# Download lightweight model (29 MB, recommended)
+cd smg_metrics/model_weights
+wget https://github.com/OlyMarco/smg_metric/releases/download/v5.1-models/polydis-v1-chd_encoder_only.pt
+```
+
+### Model Details
+
+- **Architecture**: Bidirectional GRU chord encoder (36 → 1024 → 256)
+- **Training**: EC2-VAE (Wang et al., ISMIR 2020)
+- **Size**: 29 MB (pruned from 104 MB full model, 72.3% reduction)
+- **License**: Inherits from original PolyDisVAE
+
+**Citation**:
+```bibtex
+@inproceedings{wang2020learning,
+  title={Learning interpretable representation for controllable polyphonic music generation},
+  author={Wang, Ziyu and Wang, Dingsu and Zhang, Yixiao and Xia, Gus},
+  booktitle={Proceedings of the 21st International Society for Music Information Retrieval Conference},
+  year={2020}
+}
+```
+
+See `smg_metrics/model_weights/README.md` for more details.
 
 ### Chord Recognition
 
@@ -131,21 +214,21 @@ gs = grooving_pattern_similarity("pred.mid", "ref.mid")
 ## CLI Usage
 
 ```bash
-# Single-file quality (13 metrics)
+# Single-file quality (14 metrics: 13 MusPy + OOK)
 smg-eval -m generated.mid
 
-# Single-file + structural + rhythmic (19 metrics)
+# Single-file + structural + rhythmic (20 metrics)
 smg-eval -m generated.mid -S -R
 
-# Pairwise core (10 metrics)
+# Pairwise core (11 metrics: includes CS with deep embedding)
 smg-eval -p gen.mid -r ref.mid
 
-# Full 51-metric run
+# Full 53-metric run
 smg-eval -m gen.mid -p gen.mid -r ref.mid -d -a -S -R
 
 # Select specific metrics
-smg-eval -m gen.mid --only pce ebr gs
-smg-eval -p gen.mid -r ref.mid --only ca note_f1 grooving_pattern_similarity
+smg-eval -m gen.mid --only pce ebr gs ook
+smg-eval -p gen.mid -r ref.mid --only ca cs note_f1
 
 # List all available metrics
 smg-eval --list-metrics
@@ -180,9 +263,9 @@ smg-eval -m gen.mid --time
 
 ## Metrics Reference
 
-### A. Single-file Quality (13)
+### A. Single-file Quality (14)
 
-Sources: [MusPy](https://github.com/salu133445/muspy) / ISMIR 2020, [XMusic](https://arxiv.org/abs/2501.08809) / IEEE 2025.
+Sources: [MusPy](https://github.com/salu133445/muspy) / ISMIR 2020, [XMusic](https://arxiv.org/abs/2501.08809) / IEEE 2025, [FGG](https://arxiv.org/abs/2410.08435) ICML 2025.
 
 | Metric | Symbol | Range | Reference |
 |--------|--------|-------|-----------|
@@ -199,6 +282,7 @@ Sources: [MusPy](https://github.com/salu133445/muspy) / ISMIR 2020, [XMusic](htt
 | Empty Measure Rate | EMR | [0, 1] | Dong et al., AAAI 2018 |
 | Pitch Entropy | PE | [0, 7] | MusPy 2020 |
 | Drum Pattern Consistency | DPC | [0, 1] | Dong et al., AAAI 2018 |
+| Out-of-Key Percentage | OOK | [0, 100] | FGG 2025, Krumhansl-Kessler key detection |
 
 ### B. Note-level Pairwise (5)
 
@@ -231,13 +315,14 @@ Source: [MuseMorphose](https://arxiv.org/abs/2105.04090), IEEE/ACM TASLP 2023.
 | Chroma Similarity | simChr | [0, 1] |
 | Groove Similarity | simGrv | [0, 1] |
 
-### D. Chord-level Pairwise (1)
+### D. Chord-level Pairwise (2)
 
-Source: [FGG](https://arxiv.org/abs/2410.08435) ICML 2025, [music-x-lab/midi-chord-recognition](https://github.com/music-x-lab/midi-chord-recognition).
+Sources: [FGG](https://arxiv.org/abs/2410.08435) ICML 2025, [Wang et al. ISMIR](https://arxiv.org/abs/2008.07122) 2020, [music-x-lab/midi-chord-recognition](https://github.com/music-x-lab/midi-chord-recognition).
 
 | Metric | Symbol | Range | Description |
 |--------|--------|-------|-------------|
 | Chord Accuracy | CA | [0, 1] | Beat-level DP chord recognition + exact match |
+| Chord Similarity | CS | [0, 1] | Deep chord embedding similarity (requires PyTorch) |
 
 **Chord Recognition Pipeline** (adapted from music-x-lab):
 1. Extract beat/downbeat positions from MIDI tempo map
@@ -298,25 +383,21 @@ Source: [D3PIA](https://github.com/jech2/D3PIA) ICASSP 2026, MIDISym feature ext
 | Rhythmic Density | RD | [0, 1] |
 | Voice Number | VN | [0, ∞) |
 
-## v5.0 Changelog
+## v5.1 Changelog
 
 ### New features
-- **Beat-level DP chord recognition** (music-x-lab algorithm): replaces bar-level Viterbi as default CA method
-- **D3PIA Grooving Pattern Similarity**: pairwise within-file XOR similarity metric
-- **`--only` flag**: select specific metrics for faster evaluation
-- **`--list-metrics`**: display all available metric names
-- **Short flags**: `-m`, `-p`, `-r`, `-d`, `-a`, `-S`, `-R` for faster CLI usage
-- **Lazy imports**: faster CLI startup time
-
-### Removed
-- **OOK (Out-of-Key Rate)**: requires external key annotations, limited standalone utility
-- **Chord Similarity (CS)**: requires pretrained chord encoder model
+- **Chord Similarity (CS)**: Deep chord embedding metric using pruned PolyDisVAE encoder ([Wang et al. ISMIR 2020](https://arxiv.org/abs/2008.07122))
+  - Optional dependency: requires `torch>=2.0.0` (install with `pip install smg-metrics[torch]`)
+  - Lightweight model (29 MB): `polydis-v1-chd_encoder_only.pt`
+  - Supports 17 chord qualities + inversions via dynamic programming recognition
+- **Out-of-Key (OOK)**: Percentage of notes outside detected key using Krumhansl-Kessler algorithm
+  - Standalone single-file metric, no external annotations needed
+  - Integrated into CLI with `--only ook` support
 
 ### Changed
-- **CA default method**: `'dp'` (beat-level) instead of `'viterbi'` (bar-level)
-- **Distribution metrics**: removed OOK (PD, DD, SC_sim, PCE_sim, GS_sim remain)
-- **Numpy**: removed `<2.0` upper bound
-- **Version**: 0.4.0 → 5.0.0
+- **PyTorch**: Moved to optional dependencies (`torch` extra)
+- **Metric count**: 51 → 53 (added CS + OOK)
+- **Version**: 5.0.0 → 5.1.0
 
 ## License
 
