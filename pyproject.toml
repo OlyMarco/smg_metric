@@ -48,4 +48,4 @@ include = ["smg_metrics*"]
 exclude = ["data*", "tests*", "__pycache__*"]
 
 [tool.setuptools.package-data]
-smg_metrics = ["py.typed"]
+smg_metrics = ["py.typed", "model_weights/*"]
