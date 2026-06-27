@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "smg-metrics"
-version = "5.2.0"
+version = "5.3.0"
 description = "Objective evaluation metrics for Symbolic Music Generation"
 readme = "README.md"
 license = "MIT"
@@ -37,7 +37,7 @@ Repository = "https://github.com/OlyMarco/smg_metric"
 Issues = "https://github.com/OlyMarco/smg_metric/issues"
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0", "ruff>=0.4"]
+dev = ["pytest>=7.0", "ruff>=0.4", "tqdm>=4.66"]
 torch = ["torch>=2.0.0"]
 
 [project.scripts]

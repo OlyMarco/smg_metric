@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Full metric test script for smg_metrics v5.2.
+"""Full metric test script for smg_metrics v5.3.
 
-Tests ALL 53 metrics on user-specified MIDI files (single-file)
+Tests ALL 52 metrics on user-specified MIDI files (single-file)
 and every file pair (pairwise), prints a summary table, and
 validates self-consistency (same file -> perfect scores).
 
@@ -26,9 +26,14 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import json
+import os
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+
+from tqdm import tqdm
 
 _root = Path(__file__).resolve().parent
 if str(_root) not in sys.path:
@@ -48,25 +53,24 @@ from smg_metrics import (
 
 SEP = "=" * 72
 
-# ── Metric counts (v5.2) ─────────────────────────────────────────
-N_SINGLE_QUALITY = 14
+# ── Metric counts (v5.3) ─────────────────────────────────────────
+N_SINGLE_QUALITY = 13
 N_SINGLE_STRUCT = 2
-N_SINGLE_RHYTHM = 4
+N_SINGLE_RHYTHM = 5
 N_SINGLE = N_SINGLE_QUALITY + N_SINGLE_STRUCT + N_SINGLE_RHYTHM  # 20
 
 N_PAIR_CORE = 11
 N_PAIR_STRUCT = 2
 N_PAIR_DIST = 5
 N_PAIR_ADV = 14
-N_PAIR_RHYTHM = 1  # grooving_pattern_similarity
-N_PAIR = N_PAIR_CORE + N_PAIR_STRUCT + N_PAIR_DIST + N_PAIR_ADV + N_PAIR_RHYTHM  # 33
+N_PAIR = N_PAIR_CORE + N_PAIR_STRUCT + N_PAIR_DIST + N_PAIR_ADV  # 32
 
-N_TOTAL = N_SINGLE + N_PAIR  # 53
+N_TOTAL = N_SINGLE + N_PAIR  # 52
 N_SELF_CHECKS = 12
 
 
 def _fmt(v: float, w: int = 10) -> str:
-    """Format a metric value for display."""
+    """Format a metric value for display with 4 decimal places."""
     if v != v:
         return "NaN".rjust(w)
     return f"{v:.4f}".rjust(w)
@@ -79,8 +83,9 @@ def _tag(v: float) -> str:
 
 # ── Single-file tests ────────────────────────────────────────────
 
-def _test_single(midis: list[Path], only: set[str] | None = None) -> None:
+def _test_single(midis: list[Path], only: set[str] | None = None) -> dict:
     """Run single-file quality + structural + rhythmic metrics."""
+    results = {}
     # Quality (13)
     print(SEP)
     print(f"1. Single-file quality ({N_SINGLE_QUALITY} metrics x {len(midis)} files)")
@@ -91,6 +96,7 @@ def _test_single(midis: list[Path], only: set[str] | None = None) -> None:
             d = {k: v for k, v in d.items() if k in only}
         if not d:
             continue
+        results[m.name] = {"quality": d}
         print(f"\n  {m.name}:")
         for k, v in d.items():
             print(f"    {k:<22} {_fmt(v)}  {_tag(v)}")
@@ -105,11 +111,14 @@ def _test_single(midis: list[Path], only: set[str] | None = None) -> None:
             d = {k: v for k, v in d.items() if k in only}
         if not d:
             continue
+        if m.name not in results:
+            results[m.name] = {}
+        results[m.name]["structural"] = d
         print(f"\n  {m.name}:")
         for k, v in d.items():
             print(f"    {k:<12} {_fmt(v)}  {_tag(v)}")
 
-    # Rhythmic (4)
+    # Rhythmic (5)
     print(f"\n{SEP}")
     print(f"3. Single-file rhythmic/temporal ({N_SINGLE_RHYTHM} metrics x {len(midis)} files)")
     print(SEP)
@@ -119,82 +128,101 @@ def _test_single(midis: list[Path], only: set[str] | None = None) -> None:
             d = {k: v for k, v in d.items() if k in only}
         if not d:
             continue
+        if m.name not in results:
+            results[m.name] = {}
+        results[m.name]["rhythmic"] = d
         print(f"\n  {m.name}:")
         for k, v in d.items():
             print(f"    {k:<22} {_fmt(float(v))}  {_tag(float(v))}")
+    return results
 
 
 # ── Pairwise tests ───────────────────────────────────────────────
 
-def _test_pairwise(midis: list[Path], only: set[str] | None = None) -> None:
+
+def _eval_pair_worker(pred_path: str, ref_path: str, only: set[str] | None = None) -> dict:
+    """Worker function for parallel pairwise evaluation."""
+    pair = pair_eval(pred_path, ref_path).to_dict()
+    sp = pair_eval_structural(pred_path, ref_path).to_dict()
+    dist = distribution_eval(pred_path, ref_path).to_dict()
+    adv = advanced_eval(pred_path, ref_path).to_dict()
+    if only:
+        pair = {k: v for k, v in pair.items() if k in only}
+        sp = {k: v for k, v in sp.items() if k in only}
+        dist = {k: v for k, v in dist.items() if k in only}
+        adv = {k: v for k, v in adv.items() if k in only}
+    return {"pair": pair, "sp": sp, "dist": dist, "adv": adv}
+
+
+def _test_pairwise(midis: list[Path], only: set[str] | None = None) -> dict:
     """Run all pairwise metrics on every file pair."""
     n = len(midis)
     n_pairs = n * (n - 1) // 2
     print(f"\n{SEP}")
     print(f"4. Pairwise metrics ({n_pairs} pairs x {N_PAIR} metrics)")
     print(SEP)
-    pair_count = 0
-    for i in range(n):
-        for j in range(i + 1, n):
-            pair_count += 1
-            p, r = midis[i], midis[j]
+
+    results = {}
+    pairs = [(midis[i], midis[j]) for i in range(n) for j in range(i + 1, n)]
+
+    if n >= 2:
+        # Parallel evaluation with progress bar (thread-based to reduce memory)
+        max_workers = min(os.cpu_count() or 1, 4)
+        pred_paths = [str(p) for p, _ in pairs]
+        ref_paths = [str(r) for _, r in pairs]
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            eval_results = list(
+                tqdm(
+                    executor.map(_eval_pair_worker, pred_paths, ref_paths, [only] * n_pairs),
+                    total=n_pairs,
+                    desc="Evaluating pairs",
+                    unit="pair",
+                )
+            )
+
+        for pair_count, (result, (p, r)) in enumerate(zip(eval_results, pairs), 1):
+            pair = result["pair"]
+            sp = result["sp"]
+            dist = result["dist"]
+            adv = result["adv"]
+            key = f"{p.name} vs {r.name}"
+            results[key] = {"pair": pair, "structural": sp, "distribution": dist, "advanced": adv}
             print(f"\n  [{pair_count}/{n_pairs}] {p.name} vs {r.name}")
 
-            # Core pair (10)
-            pair = pair_eval(str(p), str(r)).to_dict()
-            if only:
-                pair = {k: v for k, v in pair.items() if k in only}
             if pair:
                 print(f"    Pair ({len(pair)}):")
                 for k, v in pair.items():
                     print(f"      {k:<14} {_fmt(v)}  {_tag(v)}")
 
-            # Structural pair (2)
-            sp = pair_eval_structural(str(p), str(r)).to_dict()
-            if only:
-                sp = {k: v for k, v in sp.items() if k in only}
             if sp:
                 print(f"    Structural ({len(sp)}):")
                 for k, v in sp.items():
                     print(f"      {k:<16} {_fmt(v)}  {_tag(v)}")
 
-            # Distribution (5)
-            dist = distribution_eval(str(p), str(r)).to_dict()
-            if only:
-                dist = {k: v for k, v in dist.items() if k in only}
             if dist:
                 print(f"    Distribution ({len(dist)}):")
                 for k, v in dist.items():
                     print(f"      {k:<12} {_fmt(v)}  {_tag(v)}")
 
-            # Advanced (14)
-            adv = advanced_eval(str(p), str(r)).to_dict()
-            if only:
-                adv = {k: v for k, v in adv.items() if k in only}
             if adv:
                 print(f"    Advanced ({len(adv)}):")
                 for k, v in adv.items():
                     print(f"      {k:<16} {_fmt(v)}  {_tag(v)}")
 
-            # D3PIA GS (1)
-            gs_key = "grooving_pattern_similarity"
-            if only is None or gs_key in only:
-                gs_val = grooving_pattern_similarity(str(p), str(r))
-                print(f"    Rhythmic (1):")
-                print(f"      {gs_key:<28} {_fmt(gs_val)}  {_tag(gs_val)}")
-
-            total_shown = len(pair) + len(sp) + len(dist) + len(adv) + (1 if (only is None or gs_key in only) else 0)
+            total_shown = len(pair) + len(sp) + len(dist) + len(adv)
             print(f"    -> {total_shown} metrics shown")
+    return results
 
 
 # ── Self-consistency ─────────────────────────────────────────────
 
-def _test_self_consistency(midis: list[Path]) -> bool:
+def _test_self_consistency(midis: list[Path]) -> tuple[bool, dict]:
     """Verify self-comparison yields perfect scores."""
     print(f"\n{SEP}")
     print(f"5. Self-consistency ({N_SELF_CHECKS} checks per file)")
     print(SEP)
     all_pass = True
+    results = {}
     for m in midis:
         p = pair_eval(str(m), str(m))
         sp = pair_eval_structural(str(m), str(m))
@@ -215,12 +243,13 @@ def _test_self_consistency(midis: list[Path]) -> bool:
         file_ok = all(ok for ok, _ in checks.values())
         all_pass = all_pass and file_ok
         tag = "ALL PASS" if file_ok else "FAIL"
+        results[m.name] = {"pass": file_ok, "checks": {k: {"pass": ok, "expect": desc} for k, (ok, desc) in checks.items()}}
         print(f"  {m.name:<50} {tag}")
         if not file_ok:
             for metric, (ok, desc) in checks.items():
                 if not ok:
                     print(f"    FAIL: {metric} -- {desc}")
-    return all_pass
+    return all_pass, results
 
 
 # ── File collection ──────────────────────────────────────────────
@@ -256,7 +285,7 @@ def _collect_midis(args: argparse.Namespace) -> list[Path]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description=f"smg_metrics v5.2 — Full Metric Test ({N_TOTAL} metrics)",
+        description=f"smg_metrics v5.3 — Full Metric Test ({N_TOTAL} metrics)",
         epilog=(
             "Examples:\n"
             "  python test.py data/gen/ data/gt/            # all MIDI in dirs\n"
@@ -269,8 +298,9 @@ def main() -> None:
     )
     parser.add_argument("files", nargs="*", help="MIDI files or directories (default: data/gen/ + data/gt/)")
     parser.add_argument("--single-only", action="store_true", help="Only run single-file metrics (20)")
-    parser.add_argument("--pair-only", action="store_true", help="Only run pairwise metrics (33, needs >= 2 files)")
+    parser.add_argument("--pair-only", action="store_true", help="Only run pairwise metrics (32, needs >= 2 files)")
     parser.add_argument("--only", nargs="+", metavar="METRIC", help="Only test specified metrics")
+    parser.add_argument("--json", action="store_true", help="Save results to JSON file")
     args = parser.parse_args()
 
     t0 = time.time()
@@ -283,7 +313,7 @@ def main() -> None:
     n_pairs = n_files * (n_files - 1) // 2
 
     print(SEP)
-    print(f"smg_metrics v5.2 — Full Metric Test ({N_TOTAL} metrics)")
+    print(f"smg_metrics v5.3 — Full Metric Test ({N_TOTAL} metrics)")
     print(SEP)
     print(f"  MIDI files : {n_files}")
     print(f"  File pairs : {n_pairs}")
@@ -293,14 +323,17 @@ def main() -> None:
 
     only = set(args.only) if args.only else None
     all_pass = True
+    single_results = {}
+    pairwise_results = {}
+    self_consistency_results = {}
 
     if not args.pair_only:
-        _test_single(midis, only=only)
+        single_results = _test_single(midis, only=only)
 
     if not args.single_only and n_files >= 2:
-        _test_pairwise(midis, only=only)
+        pairwise_results = _test_pairwise(midis, only=only)
         if only is None:
-            all_pass = _test_self_consistency(midis)
+            all_pass, self_consistency_results = _test_self_consistency(midis)
 
     # Summary
     elapsed = time.time() - t0
@@ -330,6 +363,28 @@ def main() -> None:
         cleared = clear_cs_model_cache()
         if cleared > 0:
             print(f"  CS model cache cleared : {cleared} model(s)")
+
+    # Save JSON results if requested
+    if args.json:
+        output = {
+            "version": "5.3.0",
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "files": [str(m) for m in midis],
+            "n_files": n_files,
+            "n_pairs": n_pairs,
+            "single_file": single_results,
+            "pairwise": pairwise_results,
+            "self_consistency": self_consistency_results,
+            "summary": {
+                "total_tests": total_tests,
+                "all_pass": all_pass,
+                "elapsed_seconds": round(elapsed, 2),
+            },
+        }
+        json_path = _root / "test_results.json"
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(output, f, indent=2, ensure_ascii=False)
+        print(f"\n  JSON saved: {json_path}")
 
     if not all_pass and not only:
         sys.exit(1)

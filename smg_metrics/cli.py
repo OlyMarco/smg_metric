@@ -2,7 +2,7 @@
 
 Usage::
 
-    # Single-file quality (14 metrics: 13 MusPy + OOK)
+    # Single-file quality (13 metrics: 12 MusPy + OOK)
     smg-eval -m generated.mid
 
     # Single-file + structural + rhythmic
@@ -11,7 +11,7 @@ Usage::
     # Pairwise note-level + bar-level + chord-level + rhythmic (11 metrics incl. CS)
     smg-eval -p generated.mid -r reference.mid
 
-    # Distribution-level metrics (PD, DD, SC_sim, PCE_sim, GS_sim)
+    # Distribution-level metrics (PD, DD, SC_sim, PCE_sim, GSC)
     smg-eval -p generated.mid -r reference.mid -d
 
     # Advanced metrics (KL, OA, CI, CTS, CR, ReconAcc)
@@ -90,13 +90,13 @@ def _import_adv():
 # ── Metric registry for --only flag ──────────────────────────────
 
 _SINGLE_METRICS = {
-    'pce', 'ebr', 'gs', 'sc', 'pisr', 'polyphony', 'polyphony_rate',
+    'pce', 'ebr', 'sc', 'pisr', 'polyphony', 'polyphony_rate',
     'pitch_range', 'n_pitches_used', 'n_pitch_classes_used', 'emr', 'pe', 'dpc',
     'ook',  # Out-of-Key percentage (FGG 2025)
 }
 
 _STRUCTURAL_SINGLE_METRICS = {'che', 'ngram_div'}
-_RHYTHMIC_SINGLE_METRICS = {'mean_ioi', 'rhythmic_intensity', 'rhythmic_density', 'voice_number'}
+_RHYTHMIC_SINGLE_METRICS = {'mean_ioi', 'rhythmic_intensity', 'rhythmic_density', 'voice_number', 'gs'}
 
 _PAIR_METRICS = {
     'note_f1', 'notei_f1', 'mel_f1', 'i_iou', 'ver',
@@ -104,7 +104,7 @@ _PAIR_METRICS = {
 }
 
 _STRUCTURAL_PAIR_METRICS = {'melody_match', 'tonal_dist'}
-_DIST_METRICS = {'pd', 'dd', 'sc_sim', 'pce_sim', 'gs_sim'}
+_DIST_METRICS = {'pd', 'dd', 'sc_sim', 'pce_sim', 'gsc'}
 _ADV_METRICS = {
     'kl_duration', 'kl_ioi', 'kl_pitch',
     'oa_duration', 'oa_ioi', 'oa_pitch_range', 'oa_density',
@@ -112,12 +112,9 @@ _ADV_METRICS = {
     'cr_pred', 'cr_ref', 'recon_acc',
 }
 
-_RHYTHMIC_PAIR_METRICS = {'grooving_pattern_similarity'}
-
 _ALL_METRICS = (
     _SINGLE_METRICS | _STRUCTURAL_SINGLE_METRICS | _RHYTHMIC_SINGLE_METRICS
     | _PAIR_METRICS | _STRUCTURAL_PAIR_METRICS | _DIST_METRICS | _ADV_METRICS
-    | _RHYTHMIC_PAIR_METRICS
 )
 
 # ── Runners ───────────────────────────────────────────────────────
@@ -170,13 +167,6 @@ def _run_adv(pred: str, ref: str, only: set[str] | None) -> dict[str, Any]:
     if only:
         result = {k: v for k, v in result.items() if k in only}
     return result
-
-def _run_gs(pred: str, ref: str, only: set[str] | None) -> dict[str, Any]:
-    from smg_metrics.rhythmic import grooving_pattern_similarity
-    if only and 'grooving_pattern_similarity' not in only:
-        return {}
-    val = grooving_pattern_similarity(pred, ref)
-    return {'grooving_pattern_similarity': val}
 
 def _run_ook(midi: str, only: set[str] | None) -> dict[str, Any]:
     from smg_metrics.out_of_key import compute_ook
@@ -248,17 +238,17 @@ def main() -> None:
             "  smg-eval --pred_dir ./pred/ --ref_dir ./ref/\n"
             "\n"
             "Metric categories:\n"
-            "  Single-file (14):  PCE, EBR, GS, SC, PISR, Poly, PR, Range, Np, Npc, EMR, PE, DPC, OOK\n"
+            "  Single-file (13):  PCE, EBR, SC, PISR, Poly, PR, Range, Np, Npc, EMR, PE, DPC, OOK\n"
             "  Structural (4):    CHE, Ngram, MelodyMatch, TonalDist\n"
-            "  Rhythmic (5):      IOI, RI, RD, VN, GS_d3pia\n"
+            "  Rhythmic (5):      IOI, RI, RD, VN, GS\n"
             "  Pairwise (11):     F1, F1i, F1mel, I-IoU, VER, simChr, simGrv, CA, CS, XOR, NOvlp\n"
-            "  Distribution (5):  PD, DD, SC_sim, PCE_sim, GS_sim\n"
+            "  Distribution (5):  PD, DD, SC_sim, PCE_sim, GSC\n"
             "  Advanced (14):     KL×3, OA×4, CI×3, CTS, CR×2, ReconAcc\n"
         ),
     )
     # File arguments
     p.add_argument("-m", "--music", metavar="PATH",
-                   help="Single MIDI file for quality metrics (14 metrics: 13 MusPy + OOK)")
+                   help="Single MIDI file for quality metrics (13 metrics: 12 MusPy + OOK)")
     p.add_argument("-p", "--pred", metavar="PATH",
                    help="Predicted / generated MIDI file")
     p.add_argument("-r", "--ref", metavar="PATH",
@@ -277,13 +267,13 @@ def main() -> None:
 
     # Category flags
     p.add_argument("-d", "--dist", action="store_true",
-                   help="Include distribution-level metrics (PD, DD, SC_sim, PCE_sim, GS_sim)")
+                   help="Include distribution-level metrics (PD, DD, SC_sim, PCE_sim, GSC)")
     p.add_argument("-a", "--advanced", action="store_true",
                    help="Include advanced metrics (KL, OA, CI, CTS, CR, ReconAcc)")
     p.add_argument("-S", "--structural", action="store_true",
                    help="Include structural metrics (CHE, Ngram, MelodyMatch, TonalDist)")
     p.add_argument("-R", "--rhythmic", action="store_true",
-                   help="Include rhythmic metrics (IOI, RI, RD, VN, GS_d3pia)")
+                   help="Include rhythmic metrics (IOI, RI, RD, VN, GS)")
 
     # Metric selection
     p.add_argument("--only", nargs="+", metavar="METRIC",
@@ -302,13 +292,13 @@ def main() -> None:
     # --list-metrics
     if args.list_metrics:
         print("Available metrics:")
-        print(f"\n  Single-file (14):")
+        print(f"\n  Single-file (13):")
         for m in sorted(_SINGLE_METRICS):
             print(f"    {m}")
         print(f"\n  Structural single-file (2):")
         for m in sorted(_STRUCTURAL_SINGLE_METRICS):
             print(f"    {m}")
-        print(f"\n  Rhythmic single-file (4):")
+        print(f"\n  Rhythmic single-file (5):")
         for m in sorted(_RHYTHMIC_SINGLE_METRICS):
             print(f"    {m}")
         print(f"\n  Pairwise (11):")
@@ -322,9 +312,6 @@ def main() -> None:
             print(f"    {m}")
         print(f"\n  Advanced (14):")
         for m in sorted(_ADV_METRICS):
-            print(f"    {m}")
-        print(f"\n  Rhythmic pairwise (1):")
-        for m in sorted(_RHYTHMIC_PAIR_METRICS):
             print(f"    {m}")
         return
 
@@ -389,7 +376,7 @@ def main() -> None:
 
         needs_pair = only is None or bool(only & _PAIR_METRICS)
         needs_struct_p = (args.structural or (only and only & _STRUCTURAL_PAIR_METRICS))
-        needs_rhythm_p = (args.rhythmic or (only and only & _RHYTHMIC_PAIR_METRICS))
+        needs_rhythm_p = (args.rhythmic or (only and only & _RHYTHMIC_SINGLE_METRICS))
         needs_dist = (args.dist or (only and only & _DIST_METRICS))
         needs_adv = (args.advanced or (only and only & _ADV_METRICS))
 
@@ -432,13 +419,6 @@ def main() -> None:
                 print("\n-- Rhythmic (single) --")
                 _print_result(rhythm_s)
             result.update(rhythm_s)
-
-            # D3PIA GS
-            gs = _run_gs(args.pred, args.ref, only)
-            if not args.json and gs:
-                print("\n-- D3PIA GS (pair) --")
-                _print_result(gs)
-            result.update(gs)
 
         if needs_dist:
             dist = _run_dist(args.pred, args.ref, only)

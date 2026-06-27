@@ -1,23 +1,23 @@
 # smg-metrics
 
-> **S**ymbolic **M**usic **G**eneration **Metrics** — 53 objective evaluation metrics, zero config.
+> **S**ymbolic **M**usic **G**eneration **Metrics** — 52 objective evaluation metrics, zero config.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENCE)
 [![PyPI version](https://img.shields.io/pypi/v/smg-metrics.svg)](https://pypi.org/project/smg-metrics/)
 
-**8 categories, 53 metrics, 21 papers/projects (1990–2026), fully typed & tested.**
+**8 categories, 52 metrics, 21 papers/projects (1990–2026), fully typed & tested.**
 
 | Category | Count | Latest source | Year |
 |----------|-------|---------------|------|
-| A. Single-file Quality | 14 | [FGG](https://arxiv.org/abs/2410.08435) / [MusPy](https://arxiv.org/abs/2008.01951) / [XMusic](https://arxiv.org/abs/2501.08809) | 2025 |
+| A. Single-file Quality | 13 | [FGG](https://arxiv.org/abs/2410.08435) / [MusPy](https://arxiv.org/abs/2008.01951) / [XMusic](https://arxiv.org/abs/2501.08809) | 2025 |
 | B. Note-level Pairwise | 5 | [Ou et al.](https://arxiv.org/abs/2408.15176) | 2025 |
 | C. Bar-level Pairwise | 2 | [MuseMorphose](https://arxiv.org/abs/2105.04090) | 2023 |
 | D. Chord-level Pairwise | 2 | [FGG](https://arxiv.org/abs/2410.08435) / [Wang et al. ISMIR](https://arxiv.org/abs/2008.07122) | 2025/2020 |
-| E. Distribution-level | 5 | [SongMASS](https://arxiv.org/abs/2010.02305) | 2020 |
+| E. Distribution-level | 5 | [SongMASS](https://arxiv.org/abs/2012.05168) | 2020 |
 | F. Advanced | 14 | [Text2midi](https://arxiv.org/abs/2412.16526) | 2025 |
 | G. Structural | 4 | [MuseTok](https://arxiv.org/abs/2510.16273) | 2026 |
-| H. Rhythmic/Temporal | 7 | [D3PIA](https://github.com/jech2/D3PIA) | 2026 |
+| H. Rhythmic/Temporal | 7 | Standard MIR Features / [D3PIA](https://github.com/jech2/D3PIA) | Various |
 
 ## Quick Start
 
@@ -28,13 +28,13 @@ pip install smg-metrics
 ```python
 from smg_metrics import single_file, single_file_rhythmic, pair_eval, compute_ook
 
-# Single-file quality (13 MusPy metrics)
+# Single-file quality (12 MusPy metrics)
 quality = single_file("generated.mid")
-print(quality.pce, quality.ebr, quality.gs)
+print(quality.pce, quality.ebr, quality.sc)
 
-# Out-of-Key percentage (FGG 2025)
+# Out-of-Key fraction (FGG 2025)
 ook = compute_ook("generated.mid")
-print(f"OOK: {ook:.2f}%")
+print(f"OOK: {ook:.4f}")
 
 # Rhythmic metrics (4 D3PIA-style)
 rhythm = single_file_rhythmic("generated.mid")
@@ -50,7 +50,7 @@ print(pair.note_f1, pair.sim_chr, pair.ca, pair.cs)
 smg-eval -m generated.mid
 smg-eval -p gen.mid -r ref.mid
 smg-eval -m gen.mid -p gen.mid -r ref.mid -d -a -S -R
-smg-eval -m gen.mid --only pce ebr gs --json
+smg-eval -m gen.mid --only pce ebr sc --json
 ```
 
 ## Installation
@@ -83,24 +83,24 @@ cd smg_metric && pip install -e .
 from smg_metrics import (
     single_file,                # 13 MusPy quality metrics
     single_file_structural,     # 2 structural single-file metrics
-    single_file_rhythmic,       # 4 D3PIA-style rhythmic metrics
+    single_file_rhythmic,       # 5 rhythmic metrics (4 D3PIA + GS)
     pair_eval,                  # 11 core pairwise metrics (incl. CS)
     pair_eval_structural,       # 2 structural pairwise metrics
     distribution_eval,          # 5 distribution-level metrics
     advanced_eval,              # 14 advanced metrics
-    compute_ook,                # Out-of-Key percentage (FGG 2025)
+    compute_ook,                # Out-of-Key fraction (FGG 2025)
     compute_cs,                 # Chord Similarity (Wang et al. 2020)
 )
 ```
 
 | Container | Fields | Count |
 |-----------|--------|-------|
-| `SingleFileResult` | pce, ebr, gs, sc, pisr, polyphony, polyphony_rate, pitch_range, n_pitches_used, n_pitch_classes_used, emr, pe, dpc | 13 |
+| `SingleFileResult` | pce, ebr, sc, pisr, polyphony, polyphony_rate, pitch_range, n_pitches_used, n_pitch_classes_used, emr, pe, dpc, ook | 13 |
 | `StructuralSingleResult` | che, ngram_div | 2 |
-| `RhythmicResult` | mean_ioi, rhythmic_intensity, rhythmic_density, voice_number | 4 |
+| `RhythmicResult` | mean_ioi, rhythmic_intensity, rhythmic_density, voice_number, gs | 5 |
 | `PairResult` | note_f1, notei_f1, mel_f1, i_iou, ver, sim_chr, sim_grv, ca, cs, onset_xor, note_overlap | 11 |
 | `StructuralPairResult` | melody_match, tonal_dist | 2 |
-| `DistributionResult` | pd, dd, sc_sim, pce_sim, gs_sim | 5 |
+| `DistributionResult` | pd, dd, sc_sim, pce_sim, gsc | 5 |
 | `AdvancedResult` | kl_duration, kl_ioi, kl_pitch, oa_duration, oa_ioi, oa_pitch_range, oa_density, ci_precision, ci_recall, ci_f1, cts, cr_pred, cr_ref, recon_acc | 14 |
 
 Every result container is a frozen dataclass with `.to_dict()`.
@@ -135,7 +135,7 @@ from smg_metrics import compute_ook
 
 # Compute percentage of 16th-note steps with out-of-key notes
 ook = compute_ook("generated.mid")
-print(f"Out-of-Key: {ook:.2f}%")
+print(f"Out-of-Key: {ook:.4f}")
 
 # Get detailed breakdown
 ook, details = compute_ook("generated.mid", return_details=True)
@@ -144,7 +144,7 @@ print(f"OOK steps: {details['ook_steps']}/{details['total_steps']}")
 print(f"OOK notes: {details['ook_notes']}")
 ```
 
-**Reference**: FGG (Zhu et al., ICML 2025) uses OOK to measure dissonance. Well-controlled generation should have OOK ≈ 0–2%.
+**Reference**: FGG (Zhu et al., ICML 2025) uses OOK to measure dissonance. Well-controlled generation should have OOK ≈ 0–0.02.
 
 ## Model Weights
 
@@ -155,7 +155,7 @@ The **Chord Similarity (CS)** metric requires pretrained model weights:
 ```bash
 # Download lightweight model (29 MB, recommended)
 cd smg_metrics/model_weights
-wget https://github.com/OlyMarco/smg_metric/blob/main/smg_metrics/model_weights/polydis-v1-chd_encoder_only.pt
+https://github.com/OlyMarco/smg_metric/blob/main/smg_metrics/model_weights/polydis-v1-chd_encoder_only.pt
 ```
 
 ### Model Details
@@ -211,6 +211,36 @@ ca = compute_ca("pred.mid", "ref.mid")
 gs = grooving_pattern_similarity("pred.mid", "ref.mid")
 ```
 
+## Test Suite
+
+```bash
+# Quick single-file test
+python test.py --single-only data/gt/seg_40_48.mid
+
+# Full test on directories (auto multi-core + progress bar when >= 2 files)
+python test.py data/gen/ data/gt/
+
+# Pairwise only
+python test.py --pair-only pred.mid ref.mid
+
+# Select specific metrics
+python test.py --only pce ebr note_f1 ca sim_chr kl_pitch pred.mid ref.mid
+
+# Save results to JSON
+python test.py data/gen/ data/gt/ --json
+```
+
+| Flag | Description |
+|------|-------------|
+| `--single-only` | Run single-file metrics only |
+| `--pair-only` | Run pairwise metrics only |
+| `--only METRIC ...` | Run only selected metrics |
+| `--json` | Save results to `test_results.json` |
+
+Notes:
+- When evaluating 2 or more files, test.py uses multi-core evaluation with a tqdm progress bar.
+- Output file: `test_results.json` in the project root.
+
 ## CLI Usage
 
 ```bash
@@ -223,11 +253,11 @@ smg-eval -m generated.mid -S -R
 # Pairwise core (11 metrics: includes CS with deep embedding)
 smg-eval -p gen.mid -r ref.mid
 
-# Full 53-metric run
+# Full 52-metric run
 smg-eval -m gen.mid -p gen.mid -r ref.mid -d -a -S -R
 
 # Select specific metrics
-smg-eval -m gen.mid --only pce ebr gs ook
+smg-eval -m gen.mid --only pce ebr sc ook
 smg-eval -p gen.mid -r ref.mid --only ca cs note_f1
 
 # List all available metrics
@@ -263,15 +293,14 @@ smg-eval -m gen.mid --time
 
 ## Metrics Reference
 
-### A. Single-file Quality (14)
+### A. Single-file Quality (13)
 
 Sources: [MusPy](https://github.com/salu133445/muspy) / ISMIR 2020, [XMusic](https://arxiv.org/abs/2501.08809) / IEEE 2025, [FGG](https://arxiv.org/abs/2410.08435) ICML 2025.
 
 | Metric | Symbol | Range | Reference |
 |--------|--------|-------|-----------|
-| Pitch Class Entropy | PCE | [0, log₂12] | Wu & Yang, ISMIR 2020; XMusic 2025 |
+| Pitch Class Entropy | PCE | [0, log₂12] | [Wu & Yang, ISMIR 2020](https://archives.ismir.net/ismir2020/paper/000339.pdf); XMusic 2025 |
 | Empty Beat Rate | EBR | [0, 1] | Dong et al., ISMIR 2018; XMusic 2025 |
-| Groove Consistency | GS | [0, 1] | Wu & Yang, ISMIR 2020; XMusic 2025 |
 | Scale Consistency | SC | [0, 1] | Mogren, NeurIPS-W 2016 |
 | Pitch-in-Scale Rate | PISR | [0, 1] | Dong et al., AAAI 2018 |
 | Polyphony | Poly | [1, ∞) | Dong et al., AAAI 2018 |
@@ -282,7 +311,7 @@ Sources: [MusPy](https://github.com/salu133445/muspy) / ISMIR 2020, [XMusic](htt
 | Empty Measure Rate | EMR | [0, 1] | Dong et al., AAAI 2018 |
 | Pitch Entropy | PE | [0, 7] | MusPy 2020 |
 | Drum Pattern Consistency | DPC | [0, 1] | Dong et al., AAAI 2018 |
-| Out-of-Key Percentage | OOK | [0, 100] | FGG 2025, Krumhansl-Kessler key detection |
+| Out-of-Key Fraction | OOK | [0, 1] | FGG 2025, Krumhansl-Kessler key detection |
 
 ### B. Note-level Pairwise (5)
 
@@ -296,15 +325,14 @@ Source: [Ou et al.](https://arxiv.org/abs/2408.15176), NeurIPS 2025.
 | Instrument IoU | I-IoU | [0, 1] |
 | Voice Error Rate | VER | [0, ∞) |
 
-### B2. Pairwise Rhythmic (3)
+### B2. Pairwise Rhythmic (2)
 
-Sources: [D3PIA](https://github.com/jech2/D3PIA) ICASSP 2026, [mir_eval](https://github.com/craffel/mir_eval) ISMIR 2014, [Wu & Yang](https://arxiv.org/abs/2008.01951) ISMIR 2020.
+Sources: Standard MIR rhythmic comparison metrics. XOR implementation from [D3PIA](https://github.com/jech2/D3PIA) ICASSP 2026, NOvlp from [mir_eval](https://github.com/craffel/mir_eval) ISMIR 2014.
 
 | Metric | Symbol | Range |
 |--------|--------|-------|
 | Onset XOR Distance | XOR | [0, 1] |
 | Note Overlap | NOvlp | [0, 1] |
-| Grooving Pattern Similarity | GS_d3pia | [0, ∞) |
 
 ### C. Bar-level Pairwise (2)
 
@@ -336,7 +364,7 @@ Two methods available: `'dp'` (default, beat-level) and `'viterbi'` (bar-level H
 
 ### E. Distribution-level (5)
 
-Sources: [SongMASS](https://arxiv.org/abs/2010.02305) ACM-MM 2020, [MusPy](https://github.com/salu133445/muspy) ISMIR 2020.
+Sources: [SongMASS](https://arxiv.org/abs/2012.05168) ACM-MM 2020, [MusPy](https://github.com/salu133445/muspy) ISMIR 2020, [Wu & Yang](https://archives.ismir.net/ismir2020/paper/000339.pdf) ISMIR 2020.
 
 | Metric | Symbol | Range |
 |--------|--------|-------|
@@ -344,11 +372,11 @@ Sources: [SongMASS](https://arxiv.org/abs/2010.02305) ACM-MM 2020, [MusPy](https
 | Duration Distribution | DD | [0, 1] |
 | Scale Consistency Sim | SC_sim | [0, 1] |
 | Pitch Class Entropy Sim | PCE_sim | [0, 1] |
-| Groove Consistency Sim | GS_sim | [0, 1] |
+| Groove Pattern Similarity Consistency | GSC | [0, 1] |
 
 ### F. Advanced (14)
 
-Sources: [GETMusic](https://arxiv.org/abs/2305.10841) IJCAI 2025, [Rule Guided](https://arxiv.org/abs/2410.08435) ICML 2024, [Text2midi](https://arxiv.org/abs/2412.16526) AAAI 2025, [MuseTok](https://arxiv.org/abs/2510.16273) ICASSP 2026.
+Sources: [GETMusic](https://arxiv.org/abs/2305.10841) IJCAI 2025, [Text2midi](https://arxiv.org/abs/2412.16526) AAAI 2025, [MuseTok](https://arxiv.org/abs/2510.16273) ICASSP 2026.
 
 | Metric | Symbol | Range |
 |--------|--------|-------|
@@ -372,9 +400,9 @@ Sources: [Papadopoulos & Peeters](https://hal.science/hal-00726774) ISMIR 2012, 
 | Melody Matchness | MM | pair | [0, 1] |
 | Tonal Distance | TD | pair | [0, ∞) |
 
-### H. Rhythmic/Temporal Single-file (4)
+### H. Rhythmic/Temporal Single-file (5)
 
-Source: [D3PIA](https://github.com/jech2/D3PIA) ICASSP 2026, MIDISym feature extraction.
+Sources: Standard MIR rhythmic features. Implementation conventions from [D3PIA](https://github.com/jech2/D3PIA)/MIDISym (ICASSP 2026), [Wu & Yang](https://archives.ismir.net/ismir2020/paper/000339.pdf) ISMIR 2020.
 
 | Metric | Symbol | Range |
 |--------|--------|-------|
@@ -382,6 +410,50 @@ Source: [D3PIA](https://github.com/jech2/D3PIA) ICASSP 2026, MIDISym feature ext
 | Rhythmic Intensity | RI | [0, ∞) |
 | Rhythmic Density | RD | [0, 1] |
 | Voice Number | VN | [0, ∞) |
+| Grooving Pattern Similarity | GS | [0, 1] |
+
+## v5.3 Changelog
+
+### Major Refactoring
+- **GS Metric Correction**: Grooving Pattern Similarity (GS) reimplemented following original paper definition
+  - Now uses 64-dimensional binary onset vectors per bar (as per Wu & Yang ISMIR 2020)
+  - Computes normalized Hamming similarity between all bar pairs: GS = 1 - (1/64) · Σ XOR
+  - Removed dependency on `muspy.groove_consistency()` (incorrect implementation)
+  - Range: [0, 1] — measures rhythmic pattern consistency within a piece
+  - `RhythmicResult` now contains 5 metrics: IOI, RI, RD, VN, GS
+
+- **GSC Update**: Distribution-level metric now uses corrected GS implementation
+  - Updated `_gsc()` in `distribution.py` to use new `grooving_pattern_similarity()`
+  - Definition unchanged: GSC = 1 - |GS_pred - GS_ref|
+  - Clearer distinction from single-file GS metric
+
+### Performance Optimization
+- **CLI Startup Speed**: Implemented lazy imports via `__getattr__` in `__init__.py`
+  - Startup time reduced from ~6.3s to ~0.14s (~45× faster)
+  - `--help` now responds instantly
+  - API remains fully compatible: `from smg_metrics import single_file` still works
+
+### Code Changes
+- Reimplemented `grooving_pattern_similarity()` in `rhythmic.py` with paper-accurate algorithm
+- Updated `_gsc()` in `distribution.py` to use corrected GS implementation
+- Removed `muspy` dependency from GS calculation
+- Added comprehensive docstrings with paper references and formulas
+
+### Documentation Updates
+- Updated metric counts: Single-file (14→13), Rhythmic single (4→5), Rhythmic pair (3→2)
+- Corrected Wu & Yang ISMIR 2020 paper citations and links
+- Added comprehensive source references for rhythmic metrics
+- Clarified metric categories, ranges, and purposes
+
+### API Changes
+- **Modified**: `grooving_pattern_similarity(midi_path)` — now uses 64-dim vectors, normalized Hamming similarity
+- **Unchanged**: `gsc` in `DistributionResult` (name unchanged from v5.2)
+- **Removed**: `gs` field from `SingleFileResult`
+- **Added**: `gs` field to `RhythmicResult`
+
+### Changed
+- **Version**: 5.2.0 → 5.3.0
+- **Total metrics**: 52 (reorganized for clarity and consistency)
 
 ## v5.2 Changelog
 

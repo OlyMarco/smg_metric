@@ -92,18 +92,18 @@ def compute_ook(
     step_resolution: int = 4,
     return_details: bool = False,
 ) -> Union[float, tuple[float, dict]]:
-    """Compute Out-of-Key (OOK) percentage for a MIDI file.
+    """Compute Out-of-Key (OOK) fraction for a MIDI file.
     
     Quantizes the MIDI file into steps (default: 16th notes) and computes the
-    percentage of steps containing at least one out-of-key note.
+    fraction of steps containing at least one out-of-key note.
     
     Args:
         midi_path: Path to a MIDI file.
         step_resolution: Steps per quarter note (4 = 16th notes, 8 = 32nd notes).
-        return_details: If True, return (percentage, details_dict).
+        return_details: If True, return (fraction, details_dict).
         
     Returns:
-        OOK percentage (0-100), or tuple (percentage, details) if return_details=True.
+        OOK fraction (0-1), or tuple (fraction, details) if return_details=True.
         
     Details dict contains:
         - 'key': Detected key string (e.g., "C:major", "A:minor")
@@ -113,8 +113,8 @@ def compute_ook(
         
     Example:
         >>> ook = compute_ook("generated.mid")
-        >>> print(f"OOK: {ook:.2f}%")
-        OOK: 2.34%
+        >>> print(f"OOK: {ook:.4f}")
+        OOK: 0.0234
         
         >>> ook, details = compute_ook("generated.mid", return_details=True)
         >>> print(f"Key: {details['key']}, OOK steps: {details['ook_steps']}/{details['total_steps']}")
@@ -173,7 +173,7 @@ def compute_ook(
                     step_has_ook[step] = True
     
     ook_steps = int(step_has_ook.sum())
-    ook_percentage = (ook_steps / total_steps) * 100.0
+    ook_percentage = ook_steps / total_steps
     
     if return_details:
         details = {
@@ -188,12 +188,12 @@ def compute_ook(
 
 
 def compute_ook_percentage(midi_path: Union[str, Path]) -> float:
-    """Convenience function: compute OOK percentage only.
+    """Convenience function: compute OOK fraction only.
     
     Args:
         midi_path: Path to a MIDI file.
         
     Returns:
-        OOK percentage (0-100).
+        OOK fraction (0-1).
     """
     return compute_ook(midi_path, return_details=False)

@@ -1,15 +1,16 @@
 """MusPy single-file quality metrics.
 
-Wraps 14 quality metrics that evaluate a MIDI file without any reference:
-13 MusPy metrics + Out-of-Key (OOK) percentage.
+Wraps 13 quality metrics that evaluate a MIDI file without any reference:
+12 MusPy metrics + Out-of-Key (OOK) fraction.
 
 References:
-    - PCE / GS: Wu & Yang, "The Jazz Transformer," ISMIR 2020.
+    - PCE: Wu & Yang, "The Jazz Transformer," ISMIR 2020.
+      https://archives.ismir.net/ismir2020/paper/000339.pdf
     - EBR: Dong et al., "Pypianoroll," ISMIR 2018 (LBD).
     - SC: Mogren, "C-RNN-GAN," NeurIPS Workshop 2016.
     - PISR / PR / EMR / DPC: Dong et al., "MuseGAN," AAAI 2018.
     - PE / N_p / N_pc / Range: Dong et al., "MusPy," ISMIR 2020.
-    - PCE / EBR / GS: Also used by XMusic (Zhang et al., TMM 2025).
+    - PCE / EBR: Also used by XMusic (Zhang et al., TMM 2025).
     - OOK: Zhu et al., "Flexible Music Generation," ICML 2025.
 """
 
@@ -29,15 +30,14 @@ __all__ = ["SingleFileResult", "compute_all"]
 
 @dataclass(frozen=True, slots=True)
 class SingleFileResult:
-    """Container for 14 single-file quality metrics.
+    """Container for 13 single-file quality metrics.
 
     Attributes:
         pce:  Pitch Class Entropy — [0, log2(12)].
               Reference: Wu & Yang, "The Jazz Transformer," ISMIR 2020.
+              https://archives.ismir.net/ismir2020/paper/000339.pdf
         ebr:  Empty Beat Rate — [0, 1].
               Reference: Dong et al., "Pypianoroll," ISMIR 2018.
-        gs:   Groove Consistency — [0, 1].
-              Reference: Wu & Yang, "The Jazz Transformer," ISMIR 2020.
         sc:   Scale Consistency — [0, 1].
               Reference: Mogren, "C-RNN-GAN," NeurIPS Workshop 2016.
         pisr: Pitch-in-Scale Rate (major, root=C) — [0, 1].
@@ -58,12 +58,11 @@ class SingleFileResult:
               Reference: MusPy, Dong et al., ISMIR 2020.
         dpc:  Drum Pattern Consistency — [0, 1].
               Reference: Dong et al., "MuseGAN," AAAI 2018.
-        ook:  Out-of-Key percentage — [0, 100].
+        ook:  Out-of-Key fraction — [0, 1].
               Reference: Zhu et al., "Flexible Music Generation," ICML 2025.
     """
     pce: float
     ebr: float
-    gs: float
     sc: float
     pisr: float
     polyphony: float
@@ -103,9 +102,9 @@ def compute_all(
     root: int = 0,
     mode: str = "major",
 ) -> SingleFileResult:
-    """Compute all 14 single-file quality metrics for *midi_path*.
+    """Compute all 13 single-file quality metrics for *midi_path*.
 
-    Includes 13 MusPy metrics + Out-of-Key (OOK) percentage.
+    Includes 12 MusPy metrics + Out-of-Key (OOK) percentage.
 
     Args:
         midi_path: Path to a MIDI file.
@@ -113,7 +112,7 @@ def compute_all(
         mode: ``"major"`` or ``"minor"``.
 
     Returns:
-        A :class:`SingleFileResult` with all 14 metrics.
+        A :class:`SingleFileResult` with all 13 metrics.
 
     Raises:
         FileNotFoundError: If *midi_path* does not exist.
@@ -135,7 +134,6 @@ def compute_all(
     return SingleFileResult(
         pce=_safe_float(muspy.pitch_class_entropy, music),
         ebr=_safe_float(muspy.empty_beat_rate, music),
-        gs=_safe_float(muspy.groove_consistency, music, measure_res),
         sc=_safe_float(muspy.scale_consistency, music),
         pisr=_safe_float(muspy.pitch_in_scale_rate, music, root, mode),
         polyphony=_safe_float(muspy.polyphony, music),

@@ -33,13 +33,30 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Union
+from typing import Union, TYPE_CHECKING
 
 import numpy as np
-import torch
-from torch import nn
-from torch.distributions import Normal
-import torch.nn.functional as F
+
+# Optional PyTorch dependency for CS metric
+try:
+    import torch
+    from torch import nn
+    from torch.distributions import Normal
+    import torch.nn.functional as F
+    HAS_TORCH = True
+except ImportError:
+    HAS_TORCH = False
+    # Create dummy objects to allow class definitions (won't be instantiated without torch)
+    class _DummyModule:
+        pass
+    class _DummyNN:
+        Module = _DummyModule
+        GRU = None
+        Linear = None
+    nn = _DummyNN()  # type: ignore
+    Normal = None  # type: ignore
+    F = None  # type: ignore
+    torch = None  # type: ignore
 
 __all__ = [
     "compute_cs",
@@ -52,7 +69,10 @@ __all__ = [
 # ── Model cache for batch evaluation ─────────────────────────────
 # Stores loaded models keyed by (weights_path, device) to avoid
 # repeated loading during multi-file evaluation.
-_MODEL_CACHE: dict[tuple[str, str], LightweightChordModel] = {}
+if TYPE_CHECKING:
+    _MODEL_CACHE: dict[tuple[str, str], 'LightweightChordModel'] = {}
+else:
+    _MODEL_CACHE = {}
 
 # Pitch class names (consistent with chord_recognition.py)
 _PITCH_NAMES = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B']
@@ -372,13 +392,12 @@ def compute_cs(
         ImportError: If PyTorch is not installed
     """
     # Check torch availability
-    try:
-        import torch
-    except ImportError:
+    if not HAS_TORCH:
         raise ImportError(
             "Chord Similarity (CS) metric requires PyTorch. "
-            "Install with: pip install torch>=2.0.0"
+            "Install with: pip install torch>=2.0.0 or pip install smg-metrics[torch]"
         )
+    
     # Auto-locate weights
     if weights_path is None:
         search_paths = [

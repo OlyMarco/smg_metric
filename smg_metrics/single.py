@@ -72,14 +72,15 @@ def single_file_structural(
 def single_file_rhythmic(
     midi_path: Union[str, Path],
 ) -> RhythmicResult:
-    """Evaluate a single MIDI file with D3PIA-style rhythmic metrics.
+    """Evaluate a single MIDI file with rhythmic metrics.
 
-    Computes mean IOI, rhythmic intensity, rhythmic density, and voice number.
+    Computes mean IOI, rhythmic intensity, rhythmic density, voice number,
+    and grooving pattern similarity (4 D3PIA-style metrics + GS).
 
     Args:
         midi_path: Path to a MIDI file.
 
     Returns:
-        A :class:`RhythmicResult` with four rhythmic metrics.
+        A :class:`RhythmicResult` with five rhythmic metrics.
     """
     return _rhythmic_single(midi_path)

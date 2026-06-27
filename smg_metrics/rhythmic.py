@@ -1,14 +1,23 @@
 """Rhythmic and temporal metrics for symbolic music evaluation.
 
-The single-file metrics follow the MIDISym/D3PIA feature extraction
-conventions: note onsets are quantised to a 16-position-per-bar grid, rhythmic
-intensity is averaged over one-second bins, rhythmic density is the mean binary
-onset occupancy, and voice number is the average number of active voices at
-onset positions.
+Single-file metrics (IOI, RI, RD, VN) follow the MIDISym/D3PIA feature
+extraction conventions: note onsets are quantised to a 16-position-per-bar
+grid, rhythmic intensity is averaged over one-second bins, rhythmic density
+is the mean binary onset occupancy, and voice number is the average number
+of active voices at onset positions.
+
+Grooving Pattern Similarity (GS) measures rhythmic pattern consistency within
+a piece using normalized Hamming similarity of bar-level onset patterns.
+
+Pairwise metrics (XOR, NOvlp) compare onset patterns and note transcriptions
+between predicted and reference files.
 
 References:
-    - Choi et al., "D3PIA," ICASSP 2026, MIDISym feature_extraction.py.
-    - Raffel et al., "mir_eval," ISMIR 2014.
+    - IOI/RI/RD/VN: Standard rhythmic features in Music Information Retrieval.
+      Implementation conventions follow MIDISym/D3PIA feature extraction.
+    - XOR: Onset pattern comparison metric (D3PIA implementation).
+    - GS: Wu & Yang, "The Jazz Transformer," ISMIR 2020.
+    - NOvlp: Raffel et al., "mir_eval," ISMIR 2014.
 """
 
 from __future__ import annotations
@@ -36,22 +45,26 @@ __all__ = [
 
 @dataclass(frozen=True, slots=True)
 class RhythmicResult:
-    """Container for four D3PIA-style single-file rhythmic metrics.
+    """Container for five single-file rhythmic metrics.
 
     Attributes:
         mean_ioi: Mean inter-onset interval in seconds.
         rhythmic_intensity: Average number of note onsets per occupied second.
         rhythmic_density: Binary onset occupancy over a quantised grid.
         voice_number: Average number of simultaneous voices at active grid steps.
+        gs: Grooving Pattern Similarity (groove consistency within the piece).
 
-    Reference:
-        Choi et al., "D3PIA," ICASSP 2026.
+    References:
+        Standard MIR rhythmic features (mean_ioi, rhythmic_intensity, rhythmic_density, voice_number).
+        Implementation follows MIDISym/D3PIA conventions.
+        Wu & Yang, "The Jazz Transformer," ISMIR 2020 (gs).
     """
 
     mean_ioi: float
     rhythmic_intensity: float
     rhythmic_density: float
     voice_number: float
+    gs: float
 
     def to_dict(self) -> dict[str, float]:
         """Return all metrics as a plain dict."""
@@ -232,12 +245,13 @@ def voice_number(
 
 
 def compute_single(midi_path: Union[str, Path]) -> RhythmicResult:
-    """Compute all four single-file rhythmic metrics."""
+    """Compute all five single-file rhythmic metrics."""
     return RhythmicResult(
         mean_ioi=mean_ioi(midi_path),
         rhythmic_intensity=rhythmic_intensity(midi_path),
         rhythmic_density=rhythmic_density(midi_path),
         voice_number=voice_number(midi_path),
+        gs=grooving_pattern_similarity(midi_path),
     )
 
 
@@ -330,99 +344,52 @@ def note_overlap(
     return float(overlap)
 
 
-# ── D3PIA Grooving Pattern Similarity (pairwise) ─────────────────
+# ── Grooving Pattern Similarity (single-file) ────────────────────
 
-def grooving_pattern_similarity(
-    pred_path: Union[str, Path],
-    ref_path: Union[str, Path],
-    positions_per_bar: int = 16,
-) -> float:
-    """Compute D3PIA Grooving Pattern Similarity between two MIDI files.
+def grooving_pattern_similarity(midi_path: Union[str, Path]) -> float:
+    """Compute Grooving Pattern Similarity (GS) for a single MIDI file.
 
-    For each file, extracts per-bar binary onset vectors, then computes
-    the mean pairwise XOR similarity across all bar pairs *within* each
-    file.  Returns the ratio of pred-GS to ref-GS.
+    GS measures rhythmic pattern consistency within a piece. Each bar is
+    represented as a 64-dimensional binary onset vector (64 positions per bar),
+    and GS is computed as the normalized Hamming similarity between all pairs
+    of bars.
 
-    XOR distance (Wu & Yang, ISMIR 2020):
-        XOR_dist(a, b) = sum(|a - b|) / time_resolution
-        GS_pair = 1 - XOR_dist
+    Formula: GS(bar_a, bar_b) = 1 - (1/64) · Σ XOR(bar_a[i], bar_b[i])
 
-    The final GS is the average over all C(n_bars, 2) pairs within a file.
+    The function returns the average GS across all bar pairs in the piece.
+    Higher values (closer to 1) indicate more consistent groove patterns;
+    lower values indicate more rhythmic variation between bars.
 
     Reference:
-        Choi et al., "D3PIA," ICASSP 2026.
         Wu & Yang, "The Jazz Transformer," ISMIR 2020.
-        midisym/midisym/analysis/feature_extraction.py.
+        https://archives.ismir.net/ismir2020/paper/000339.pdf
 
     Args:
-        pred_path: Path to the predicted / generated MIDI file.
-        ref_path:  Path to the reference / ground-truth MIDI file.
-        positions_per_bar: Grid resolution per bar (default 16).
+        midi_path: Path to the MIDI file.
 
     Returns:
-        GS value in [0, 1] (pred_gs / ref_gs), or NaN if ref has no bars.
+        GS value in [0, 1]. Returns 0.0 if the file has fewer than 2 bars.
     """
-    import itertools as _itertools
+    # Get binary onset matrix with 64 positions per bar (as per paper)
+    bar_matrix = _binary_onset_bar_matrix(midi_path, positions_per_bar=64)
 
-    def _bar_onset_vecs(midi_path, pos_per_bar):
-        import pretty_midi
-        pm = pretty_midi.PrettyMIDI(str(midi_path))
-        notes = extract_notes3(midi_path)
-        if not notes:
-            return []
-        beats = pm.get_beats()
-        if len(beats) < 2:
-            return []
-        beat_dur = float(np.median(np.diff(beats)))
-        bpm = 4
-        sixteenth = beat_dur / max(1, pos_per_bar // bpm)
-        n_bars = max(1, len(beats) // bpm)
-        # Use pretty_midi note onsets directly (in seconds)
-        onsets = []
-        for inst in pm.instruments:
-            if inst.is_drum:
-                continue
-            for note in inst.notes:
-                onsets.append(note.start)
-        onsets.sort()
-        beat_times = list(beats)
-        bars = []
-        for m in range(n_bars):
-            i0 = m * bpm
-            i1 = min((m + 1) * bpm, len(beat_times))
-            if i0 >= len(beat_times):
-                break
-            t0 = beat_times[i0]
-            t1 = beat_times[i1] if i1 < len(beat_times) else t0 + beat_dur * bpm
-            vec = np.zeros(pos_per_bar, dtype=np.float64)
-            for onset in onsets:
-                if t0 <= onset < t1:
-                    pos = int(round((onset - t0) / sixteenth))
-                    pos = max(0, min(pos, pos_per_bar - 1))
-                    vec[pos] = 1.0
-            bars.append(vec)
-        return bars
-
-    def _within_gs(bars):
-        if len(bars) < 2:
-            return float('nan')
-        tr = len(bars[0])
-        pairs = list(_itertools.combinations(range(len(bars)), 2))
-        sims = [1.0 - np.sum(np.abs(bars[a] - bars[b])) / tr for a, b in pairs]
-        return float(np.mean(sims))
-
-    pred_bars = _bar_onset_vecs(pred_path, positions_per_bar)
-    ref_bars = _bar_onset_vecs(ref_path, positions_per_bar)
-
-    pred_gs = _within_gs(pred_bars)
-    ref_gs = _within_gs(ref_bars)
-
-    if np.isnan(ref_gs) or ref_gs == 0:
-        return float('nan')
-    if np.isnan(pred_gs):
+    n_bars = bar_matrix.shape[0]
+    if n_bars < 2:
         return 0.0
 
-    return pred_gs / ref_gs
+    # Compute pairwise normalized Hamming similarity for all bar pairs
+    similarities = []
+    for i in range(n_bars):
+        for j in range(i + 1, n_bars):
+            # XOR gives 1 where bits differ, 0 where they match
+            xor_result = np.bitwise_xor(bar_matrix[i], bar_matrix[j])
+            # Normalized Hamming distance (proportion of differing bits)
+            hamming_dist = np.mean(xor_result)
+            # GS = 1 - distance (convert to similarity)
+            gs_pair = 1.0 - hamming_dist
+            similarities.append(gs_pair)
+
+    return float(np.mean(similarities))
 
 
 if __name__ == "__main__":
