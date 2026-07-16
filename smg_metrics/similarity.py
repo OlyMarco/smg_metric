@@ -3,7 +3,7 @@
 Original algorithm: MuseMorphose (Wu and Yang, IEEE/ACM TASLP 2023).
 Used by: MuseTok (ICASSP 2026), Rule Guided Diffusion (ICML 2024).
 
-Key implementation notes (verified against MuseTok test_evaluation.py):
+Key implementation notes:
     Chroma: 12-bin pitch-class histogram, L2-normalised, count-based.
     Groove: 48-bin onset-position histogram (pos_per_bar=48), L2-normalised.
     Aggregation: for each generated bar, take max cosine similarity over all

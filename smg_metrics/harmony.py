@@ -1,14 +1,14 @@
 """Harmony and tonality metrics (single-file).
 
 Consolidates all single-file harmony/tonality metrics from MusPy, FGG,
-C-RNN-GAN, Jazz Transformer, and Papadopoulos and Peeters.
+C-RNN-GAN, Jazz Transformer, and Yeh et al.
 
 Metrics:
     PCE  Pitch Class Entropy (Jazz Transformer, ISMIR 2020)
     SC   Scale Consistency (C-RNN-GAN, NeurIPS-W 2016)
     PISR Pitch-in-Scale Rate (MuseGAN, AAAI 2018)
     OOK  Out-of-Key Fraction (FGG, ICML 2025)
-    CHE  Chord Histogram Entropy (Papadopoulos and Peeters, ISMIR 2012)
+    CHE  Chord Histogram Entropy (Yeh et al., 2020)
 
 All single-file metrics take a single MIDI path and return a float.
 No reference file is needed.
@@ -18,7 +18,7 @@ References:
     SC:  https://arxiv.org/abs/1611.09904
     PISR: https://arxiv.org/abs/1709.06298
     OOK: https://arxiv.org/abs/2410.08435
-    CHE: https://hal.science/hal-00726774
+    CHE: https://arxiv.org/abs/2001.02360
     MusPy: https://arxiv.org/abs/2008.01951
 """
 
@@ -237,9 +237,9 @@ def chord_histogram_entropy(midi_path: Union[str, Path]) -> float:
     Formula: CHE = -sum(p(c) * log2(p(c))) over all chord types c,
     where p(c) is the proportion of bars with chord type c.
 
-    Reference: Papadopoulos and Peeters, "Large-scale Study of Chord
-    Estimation Algorithms Based on Chroma," ISMIR 2012.
-    URL: https://hal.science/hal-00726774
+    Reference: Yeh et al., "Automatic Melody Harmonization with Triad
+Chords: A Comparative Study," 2020.
+URL: https://arxiv.org/abs/2001.02360
 
     Args:
         midi_path: Path to a MIDI file.

@@ -17,7 +17,7 @@
 | [A. Harmony & Tonality](#a-harmony--tonality-7) | 5 | 2 | 7 | [Jazz Transformer](https://archives.ismir.net/ismir2020/paper/000339.pdf), [MuseGAN](https://arxiv.org/abs/1709.06298), [FGG](https://arxiv.org/abs/2410.08435) |
 | [B. Rhythm & Temporal](#b-rhythm--temporal-6) | 4 | 2 | 6 | [D3PIA](https://github.com/jech2/D3PIA), [Jazz Transformer](https://archives.ismir.net/ismir2020/paper/000339.pdf) |
 | [C. Polyphony & Quality](#c-polyphony--quality-6) | 6 | 0 | 6 | [MuseGAN](https://arxiv.org/abs/1709.06298), [MusPy](https://arxiv.org/abs/2008.01951) |
-| [D. Note-level Pairwise](#d-note-level-pairwise-2) | 0 | 2 | 2 | [Ou et al.](https://arxiv.org/abs/2408.15176) |
+| [D. Note-level Pairwise](#d-note-level-pairwise-2) | 0 | 2 | 2 | [USMA](https://arxiv.org/abs/2408.15176) |
 | [E. Bar-level Pairwise](#e-bar-level-pairwise-2) | 0 | 2 | 2 | [MuseMorphose](https://arxiv.org/abs/2105.04090) |
 | [F. Distribution-level](#f-distribution-level-2) | 0 | 2 | 2 | [SongMASS](https://arxiv.org/abs/2012.05168) |
 | **Total** | **15** | **10** | **25** | 18 papers/projects |
@@ -245,11 +245,11 @@ Every result is a frozen dataclass with `.to_dict()`:
 
 ### A. Harmony & Tonality (7)
 
-Sources: [Jazz Transformer](https://archives.ismir.net/ismir2020/paper/000339.pdf) (ISMIR 2020), [C-RNN-GAN](https://arxiv.org/abs/1611.09904) (NeurIPS-W 2016), [MuseGAN](https://arxiv.org/abs/1709.06298) (AAAI 2018), [FGG](https://arxiv.org/abs/2410.08435) (ICML 2025), [Papadopoulos & Peeters](https://hal.science/hal-00726774) (ISMIR 2012), [EC2-VAE](https://arxiv.org/abs/2008.07122) (ISMIR 2020), [PopMAG](https://arxiv.org/abs/2008.07703) (ACM-MM 2020).
+Sources: [Jazz Transformer](https://archives.ismir.net/ismir2020/paper/000339.pdf) (ISMIR 2020), [C-RNN-GAN](https://arxiv.org/abs/1611.09904) (NeurIPS-W 2016), [MuseGAN](https://arxiv.org/abs/1709.06298) (AAAI 2018), [FGG](https://arxiv.org/abs/2410.08435) (ICML 2025), [Yeh et al.](https://arxiv.org/abs/2001.02360) (2020), [EC2-VAE](https://arxiv.org/abs/2008.07122) (ISMIR 2020), [PopMAG](https://arxiv.org/abs/2008.07703) (ACM-MM 2020).
 
 #### PCE — Pitch Class Entropy (single-file)
 
-Shannon entropy of the 12-bin pitch-class histogram. Measures how dispersed the pitch-class distribution is. Lower PCE means the music is more tonally focused (fewer pitch classes dominate). The [Amadeus](https://arxiv.org/abs/2501.08809) paper reports PCE around 1.97–2.15 for well-trained models.
+Shannon entropy of the 12-bin pitch-class histogram. Measures how dispersed the pitch-class distribution is. Lower PCE means the music is more tonally focused (fewer pitch classes dominate). The [Amadeus](https://arxiv.org/abs/2508.20665) paper reports PCE around 1.97–2.15 for well-trained models.
 
 - Formula: `PCE = -sum(P(i) * log2(P(i)))` for i = 0..11
 - Range: [0, log2(12)] ≈ [0, 3.585]
@@ -260,7 +260,7 @@ Shannon entropy of the 12-bin pitch-class histogram. Measures how dispersed the 
 
 #### SC — Scale Consistency (single-file)
 
-The largest pitch-in-scale rate over all 24 major/minor scales. Indicates how well the music conforms to some diatonic scale. Higher SC means better key adherence. [Amadeus](https://arxiv.org/abs/2501.08809) reports SC around 0.96–0.98.
+The largest pitch-in-scale rate over all 24 major/minor scales. Indicates how well the music conforms to some diatonic scale. Higher SC means better key adherence. [Amadeus](https://arxiv.org/abs/2508.20665) reports SC around 0.96–0.98.
 
 - Formula: `SC = max over (root, mode) of PISR(root, mode)`
 - Range: [0, 1]
@@ -297,7 +297,7 @@ Shannon entropy of the chord-type histogram. Extracts chords per bar using chrom
 - Formula: `CHE = -sum(p(c) * log2(p(c)))` over chord types c
 - Range: [0, log2(C)] where C = number of distinct chord types
 - Direction: higher is better (more diverse chords)
-- Reference: [Papadopoulos & Peeters, ISMIR 2012](https://hal.science/hal-00726774)
+- Reference: [Yeh et al., 2020](https://arxiv.org/abs/2001.02360)
 - Code: `harmony.py` → `chord_histogram_entropy()`
 
 #### CA — Chord Accuracy (pairwise)
@@ -330,7 +330,7 @@ Cosine similarity of 256-dimensional chord progression embeddings from a pretrai
 
 ### B. Rhythm & Temporal (6)
 
-Sources: [D3PIA](https://github.com/jech2/D3PIA) (ICASSP 2026), [Jazz Transformer](https://archives.ismir.net/ismir2020/paper/000339.pdf) (ISMIR 2020), [Yang & Lerch](https://link.springer.com/article/10.1007/s00521-018-3548-1) (NCA 2018), [MusPy](https://arxiv.org/abs/2008.01951) (ISMIR 2020), [mir_eval](https://github.com/mir-evaluation/mir_eval) (ISMR 2014).
+Sources: [D3PIA](https://github.com/jech2/D3PIA) (ICASSP 2026), [Jazz Transformer](https://archives.ismir.net/ismir2020/paper/000339.pdf) (ISMIR 2020), [Yang & Lerch](https://doi.org/10.1007/s00521-018-3849-7) (NCA 2018), [MusPy](https://arxiv.org/abs/2008.01951) (ISMIR 2020), [mir_eval](https://github.com/mir-evaluation/mir_eval) (ISMR 2014).
 
 #### IOI — Mean Inter-Onset Interval (single-file)
 
@@ -355,12 +355,12 @@ Measures rhythmic pattern consistency within a piece. Each bar is represented as
 
 #### Ngram — N-gram Note Diversity (single-file)
 
-Ratio of unique 4-gram pitch-class sequences to total 4-grams. Higher diversity means the music uses more varied melodic patterns. Uses n=4 following [Yang & Lerch (NCA 2018)](https://link.springer.com/article/10.1007/s00521-018-3548-1).
+Ratio of unique 4-gram pitch-class sequences to total 4-grams. Higher diversity means the music uses more varied melodic patterns. Uses n=4 following [Yang & Lerch (NCA 2018)](https://doi.org/10.1007/s00521-018-3849-7).
 
 - Formula: `Diversity = count(unique 4-grams) / count(total 4-grams)`
 - Range: [0, 1]
 - Direction: higher is better (more diverse)
-- Reference: [Yang & Lerch, NCA 2018](https://link.springer.com/article/10.1007/s00521-018-3548-1)
+- Reference: [Yang & Lerch, NCA 2018](https://doi.org/10.1007/s00521-018-3849-7)
 - Code: `rhythm.py` → `ngram_diversity()`
 
 #### EBR — Empty Beat Rate (single-file)
@@ -419,7 +419,7 @@ Ratio of timesteps where 2 or more pitches are simultaneously on. Called "polyph
 
 #### PE — Pitch Entropy (single-file)
 
-Shannon entropy of the 128-bin pitch histogram (one bin per MIDI pitch 0–127). Higher PE means more diverse pitch usage. [Amadeus](https://arxiv.org/abs/2501.08809) reports PE around 2.20–2.91, where lower values indicate more focused pitch usage.
+Shannon entropy of the 128-bin pitch histogram (one bin per MIDI pitch 0–127). Higher PE means more diverse pitch usage. [Amadeus](https://arxiv.org/abs/2508.20665) reports PE around 2.20–2.91, where lower values indicate more focused pitch usage.
 
 - Formula: `PE = -sum(P(i) * log2(P(i)))` for i = 0..127
 - Range: [0, log2(128)] = [0, 7]
@@ -457,7 +457,7 @@ Number of distinct pitch classes (0–11, i.e., pitch mod 12) used. Higher means
 
 ### D. Note-level Pairwise (2)
 
-Source: [Ou et al.](https://arxiv.org/abs/2408.15176), NeurIPS 2025, Appendix C.1.
+Source: [USMA](https://arxiv.org/abs/2408.15176), NeurIPS 2025, Appendix C.1.
 
 #### Note F1 (pairwise)
 
@@ -466,7 +466,7 @@ F1 score of greedy one-to-one note matching by (onset, pitch) on a quantised 16t
 - Formula: `F1 = 2 * P * R / (P + R)` where `P = matched / pred_count`, `R = matched / ref_count`
 - Range: [0, 1]
 - Direction: higher is better
-- Reference: [Ou et al., NeurIPS 2025](https://arxiv.org/abs/2408.15176)
+- Reference: [USMA, NeurIPS 2025](https://arxiv.org/abs/2408.15176)
 - Code: `note_f1.py` → `compute_all()`
 
 #### Notei F1 (pairwise)
@@ -476,14 +476,14 @@ Same as Note F1 but the matching key includes the instrument (MIDI program numbe
 - Formula: Same as Note F1 with key = (onset, pitch, instrument)
 - Range: [0, 1]
 - Direction: higher is better
-- Reference: [Ou et al., NeurIPS 2025](https://arxiv.org/abs/2408.15176)
+- Reference: [USMA, NeurIPS 2025](https://arxiv.org/abs/2408.15176)
 - Code: `note_f1.py` → `compute_all()`
 
 ---
 
 ### E. Bar-level Pairwise (2)
 
-Source: [MuseMorphose](https://arxiv.org/abs/2105.04090), Wu & Yang, IEEE/ACM TASLP 2023. Verified against [MuseTok](https://github.com/Yujia-Yan/MuseTok) `test_evaluation.py`.
+Source: [MuseMorphose](https://arxiv.org/abs/2105.04090), Wu & Yang, IEEE/ACM TASLP 2023.
 
 #### simChr — Chroma Similarity (pairwise)
 
@@ -660,7 +660,7 @@ smg_metric/
 
 ---
 
-## v5.4.1 Changelog
+## v5.4.2 Changelog
 
 ### Structural Refactoring
 
@@ -681,14 +681,14 @@ Deleted files: `muspy_ext.py`, `structural.py`, `out_of_key.py`, `rhythmic.py`, 
 
 All 25 metrics verified against original literature descriptions and source code:
 - MusPy source code confirmed for PCE, SC, PISR, Poly, PR, PE, Range, Np, Npc, EBR
-- [Amadeus](https://arxiv.org/abs/2501.08809) paper confirms SC↑, PE↓, PCE↓ directions
+- [Amadeus](https://arxiv.org/abs/2508.20665) paper confirms SC↑, PE↓, PCE↓ directions
 - [FGG](https://arxiv.org/abs/2410.08435) paper confirms OOK (16th-note steps), CA (beat-level exact match), CS (2-measure segments, 256-dim, cosine)
 - [SongMASS](https://arxiv.org/abs/2012.05168) `cal_overlap` implementation confirmed for PD/DD
 - GS implementation confirmed different from MusPy's `groove_consistency` (all pairs vs adjacent only)
 
 ### Changes
 
-- Version: 5.3.0 -> 5.4.1
+- Version: 5.3.0 -> 5.4.2
 - Total metrics: 52 -> 25
 - CLI: New `--harmony`, `--rhythm`, `--quality`, `--all-single` flags
 - test.py: Updated to use new module structure

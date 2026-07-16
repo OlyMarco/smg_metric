@@ -16,7 +16,7 @@ References:
     GS: https://archives.ismir.net/ismir2020/paper/000339.pdf
         Implemented from scratch (NOT muspy.groove_consistency which only
         compares adjacent bars; the original paper uses ALL bar pairs).
-    Ngram: https://link.springer.com/article/10.1007/s00521-018-3548-1
+    Ngram: https://doi.org/10.1007/s00521-018-3849-7
     EBR: https://arxiv.org/abs/2008.01951
     OXD: https://github.com/jech2/D3PIA
     NOvlp: https://github.com/mir-evaluation/mir_eval
@@ -202,7 +202,7 @@ def ngram_diversity(midi_path: Union[str, Path], n: int = 4) -> float:
 
     Reference: Yang and Lerch, "On the Evaluation of Generative Models in
     Music," Neural Computing and Applications, 2018.
-    URL: https://link.springer.com/article/10.1007/s00521-018-3548-1
+    URL: https://doi.org/10.1007/s00521-018-3849-7
 
     Args:
         midi_path: Path to a MIDI file.

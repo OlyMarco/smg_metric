@@ -2,7 +2,7 @@
 
 References:
     - Harmony: PCE/SC/PISR (Jazz Transformer, C-RNN-GAN, MuseGAN) +
-                OOK (FGG) + CHE (Papadopoulos & Peeters)
+                OOK (FGG) + CHE (Yeh et al.)
     - Rhythm: IOI/GS/Ngram/EBR (D3PIA, Jazz Transformer, Yang & Lerch, MusPy)
     - Quality: Poly/PR/PE/Range/Np/Npc (MuseGAN, MusPy)
 """

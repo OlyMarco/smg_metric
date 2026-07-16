@@ -2,9 +2,9 @@
 
 Implements two pairwise comparison metrics from:
 
-    Ou et al., "Unifying Symbolic Music Arrangement," NeurIPS 2025.
-    URL: https://arxiv.org/abs/2408.15176
-    Appendix C.1.
+USMA (Unifying Symbolic Music Arrangement), NeurIPS 2025.
+URL: https://arxiv.org/abs/2408.15176
+Appendix C.1.
 
 Note events are quantised to a 16th-note grid before matching.
 The matching is greedy one-to-one (provably optimal for exact-match keys).
@@ -60,8 +60,8 @@ class NoteF1Result:
 def _load_notes(midi_path: str | Path) -> list[_NoteI]:
     """Extract quantised note events from *midi_path*.
 
-    Reference: Ou et al., "Unifying Symbolic Music Arrangement," NeurIPS 2025.
-    URL: https://arxiv.org/abs/2408.15176
+Reference: USMA, "Unifying Symbolic Music Arrangement," NeurIPS 2025.
+URL: https://arxiv.org/abs/2408.15176
     """
     midi = miditoolkit.MidiFile(str(midi_path))
     tp16 = max(1, midi.ticks_per_beat // _TP16_DIVISOR)
