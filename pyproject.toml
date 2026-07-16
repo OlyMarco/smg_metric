@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "smg-metrics"
-version = "5.4.0"
+version = "5.4.1"
 description = "Objective evaluation metrics for Symbolic Music Generation"
 readme = "README.md"
 license = "MIT"

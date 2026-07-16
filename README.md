@@ -660,7 +660,7 @@ smg_metric/
 
 ---
 
-## v5.4 Changelog
+## v5.4.1 Changelog
 
 ### Structural Refactoring
 
@@ -688,7 +688,7 @@ All 25 metrics verified against original literature descriptions and source code
 
 ### Changes
 
-- Version: 5.3.0 -> 5.4.0
+- Version: 5.3.0 -> 5.4.1
 - Total metrics: 52 -> 25
 - CLI: New `--harmony`, `--rhythm`, `--quality`, `--all-single` flags
 - test.py: Updated to use new module structure
