@@ -369,9 +369,9 @@ class ChordRecognitionDP:
         Args:
             midi_path: Path to a MIDI file (string or Path).
 
-        Returns:
-            List of :class:`ChordInterval` with ``(start, end, label)`` in seconds.
-        """
+    Returns:
+        List of ChordInterval with (start, end, label) in seconds.
+    """
         # Step 1: Extract features
         beat_chroma, beat_bass, qt_onset, qt_offset, beat_arr = _extract_beat_features(
             midi_path, self.extra_division
@@ -481,7 +481,7 @@ def recognize_chords(
         use_transition: Apply transition penalties in DP decode.
 
     Returns:
-        List of :class:`ChordInterval` with ``(start, end, label)`` in seconds.
+        List of ChordInterval with (start, end, label) in seconds.
 
     Reference:
         Wang et al., "Pop909," ISMIR 2020.
@@ -501,7 +501,7 @@ def recognize_chords_beat(
 ) -> list[tuple[float, float, str]]:
     """Recognize chords, returning raw ``(start, end, label)`` tuples.
 
-    Convenience wrapper around :func:`recognize_chords`.
+    Convenience wrapper around recognize_chords().
 
     Args:
         midi_path: Path to a MIDI file.

@@ -56,7 +56,7 @@ def load_midi(midi_path: Union[str, Path]) -> miditoolkit.MidiFile:
         midi_path: Path to the MIDI file.
 
     Returns:
-        A :class:`miditoolkit.MidiFile` object.
+        A miditoolkit.MidiFile object.
 
     Raises:
         FileNotFoundError: If *midi_path* does not exist.
@@ -71,7 +71,7 @@ def ticks_per_16th(midi: miditoolkit.MidiFile) -> int:
     """Return the number of ticks per 16th-note (minimum 1).
 
     Args:
-        midi: An opened :class:`miditoolkit.MidiFile`.
+        midi: An opened miditoolkit.MidiFile object.
 
     Returns:
         ``max(1, midi.ticks_per_beat // 4)``.
@@ -91,7 +91,7 @@ def extract_notes3(midi_path: Union[str, Path]) -> list[Note3]:
         midi_path: Path to a MIDI file.
 
     Returns:
-        A list of :class:`Note3`.
+        A list of Note3 objects.
     """
     midi = load_midi(midi_path)
     notes: list[Note3] = []
@@ -112,7 +112,7 @@ def extract_notes4(midi_path: Union[str, Path]) -> list[Note4]:
         midi_path: Path to a MIDI file.
 
     Returns:
-        A list of :class:`Note4`.
+        A list of Note4 objects.
     """
     midi = load_midi(midi_path)
     notes: list[Note4] = []
@@ -139,8 +139,8 @@ def quantise_to_pc_sequence(
         - 1–12 = pitch class + 1
 
     Args:
-        notes: Notes extracted by :func:`extract_notes4`.
-        tp16:  Ticks per 16th-note (from :func:`ticks_per_16th`).
+        notes: Notes extracted by extract_notes4().
+        tp16:  Ticks per 16th-note (from ticks_per_16th()).
 
     Returns:
         A list of integers representing the pitch-class sequence.

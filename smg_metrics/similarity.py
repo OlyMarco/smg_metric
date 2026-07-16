@@ -1,14 +1,16 @@
 """Chroma Similarity (simChr) and Groove Similarity (simgrv).
 
-Original algorithm: MuseMorphose (Wu & Yang, IEEE/ACM TASLP 2023).
+Original algorithm: MuseMorphose (Wu and Yang, IEEE/ACM TASLP 2023).
 Used by: MuseTok (ICASSP 2026), Rule Guided Diffusion (ICML 2024).
 
-Key implementation notes (verified against MuseTok ``test_evaluation.py``):
-    - Chroma: 12-bin pitch-class histogram, L2-normalised, count-based (not velocity).
-    - Groove: 48-bin onset-position histogram (``pos_per_bar=48``), L2-normalised.
-    - Aggregation: for each generated bar, take max cosine similarity over all
-      reference bars, then average across all generated bars.
-    - Empty bars fall back to a uniform vector (similarity = 1.0 with itself).
+Key implementation notes (verified against MuseTok test_evaluation.py):
+    Chroma: 12-bin pitch-class histogram, L2-normalised, count-based.
+    Groove: 48-bin onset-position histogram (pos_per_bar=48), L2-normalised.
+    Aggregation: for each generated bar, take max cosine similarity over all
+    reference bars, then average across all generated bars.
+    Empty bars fall back to a uniform vector (similarity = 1.0 with itself).
+
+Reference: https://arxiv.org/abs/2105.04090
 """
 
 from __future__ import annotations
@@ -31,8 +33,8 @@ class SimilarityResult:
     """Container for two bar-level similarity metrics.
 
     Attributes:
-        sim_chr:  Chroma (pitch-class) similarity — [0, 1].
-        sim_grv:  Groove (onset-pattern) similarity — [0, 1].
+        sim_chr: Chroma (pitch-class) similarity in [0, 1].
+        sim_grv: Groove (onset-pattern) similarity in [0, 1].
     """
     sim_chr: float
     sim_grv: float
@@ -53,8 +55,8 @@ def _l2(vec: np.ndarray, dim: int) -> np.ndarray:
 def _beats_per_measure(pm: pretty_midi.PrettyMIDI) -> int:
     """Return beats-per-measure from the first time signature (default 4/4).
 
-    Reference:
-        Wu & Yang, "MuseMorphose," IEEE/ACM TASLP 2023.
+    Reference: Wu and Yang, "MuseMorphose," IEEE/ACM TASLP 2023.
+    URL: https://arxiv.org/abs/2105.04090
     """
     if pm.time_signature_changes:
         ts = pm.time_signature_changes[0]
@@ -127,7 +129,7 @@ def compute_all(
         pos_per_bar: Groove grid resolution (default 48 = 4 beats x 12 sub-divisions).
 
     Returns:
-        A :class:`SimilarityResult`.
+        A SimilarityResult dataclass.
 
     Raises:
         FileNotFoundError: If either file does not exist.

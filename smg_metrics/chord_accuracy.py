@@ -2,14 +2,14 @@
 
 Implements two chord recognition backends and a beat-level comparison metric:
 
-1. **DP method** (default, ``method='dp'``):
+1. DP method (default, method='dp'):
    Beat-level chroma features + dynamic-programming decoder, adapted from
-   music-x-lab/midi-chord-recognition (Jiang, 2025).  Used by FGG
+   music-x-lab/midi-chord-recognition (Jiang, 2025). Used by FGG
    (Zhu et al., ICML 2025) for Direct Chord Accuracy (DCA).
 
-2. **Viterbi method** (``method='viterbi'``):
-   Bar-level HMM Viterbi decoder from GETMusic's ``magenta_chord_recognition.py``
-   (microsoft/muzic).  Used by GETMusic (Lv et al., IJCAI 2025) Eq. 6.
+2. Viterbi method (method='viterbi'):
+   Bar-level HMM Viterbi decoder from GETMusic's magenta_chord_recognition.py
+   (microsoft/muzic). Used by GETMusic (Lv et al., IJCAI 2025) Eq. 6.
 
 The CA formula (both methods):
     CA = (1 / N) * sum_{j=1}^{N} 1(C'_j == C_j)
