@@ -1,6 +1,6 @@
 # smg-metrics
 
-> **S**ymbolic **M**usic **G**eneration **Metrics** — 25 objective evaluation metrics for symbolic music, zero config, fully typed.
+> **S**ymbolic **M**usic **G**eneration **Metrics** — a toolkit of 25 objective evaluation metrics for Symbolic Music Generation, spanning harmony, rhythmic complexity, polyphony, distribution, and structural coherence — zero‑config, fully typed.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENCE)
@@ -99,6 +99,9 @@ pip install -e ".[dev,torch]"
 # All 15 single-file metrics on one MIDI file
 smg-eval -m generated.mid --all-single
 
+# All 15 single-file metrics on a directory (recursive: finds all .mid files)
+smg-eval -m ./data/pred --all-single
+
 # Only harmony metrics (PCE, SC, PISR, OOK, CHE)
 smg-eval -m generated.mid --harmony
 
@@ -114,9 +117,12 @@ smg-eval -p gen.mid -r ref.mid -d
 # Only pairwise core (8 metrics, no distribution)
 smg-eval -p gen.mid -r ref.mid
 
-# Select specific metrics by name
+# Select specific metrics by name (comma-separated)
 smg-eval -m gen.mid --only pce,sc,gs,ebr
-smg-eval -p gen.mid -r ref.mid --only note_f1 ca cs
+smg-eval -p gen.mid -r ref.mid --only note_f1,ca,cs
+
+# Directory input with --only (recursive)
+smg-eval -m ./data/pred --only pce,gs --json
 
 # List all 25 available metric names
 smg-eval --list-metrics
@@ -135,7 +141,7 @@ smg-eval -m gen.mid --time
 
 | Flag | Description |
 |------|-------------|
-| `-m, --music PATH` | Single MIDI file for single-file metrics (harmony, rhythm, quality) |
+| `-m, --music PATH` | MIDI file **or directory** for single-file metrics (harmony, rhythm, quality). If a directory, recursively finds all .mid files |
 | `-p, --pred PATH` | Predicted / generated MIDI file for pairwise metrics |
 | `-r, --ref PATH` | Reference / ground-truth MIDI file for pairwise metrics |
 | `--pred_dir DIR` | Directory of predicted MIDI files (batch mode, auto-pairs by sorted filename) |
@@ -147,7 +153,7 @@ smg-eval -m gen.mid --time
 | `--quality` | Run 6 quality metrics: Poly, PR, PE, Range, Np, Npc |
 | `--all-single` | Run all 15 single-file metrics (equivalent to `--harmony --rhythm --quality`) |
 | `-d, --dist` | Run 2 distribution metrics: PD, DD (requires `-p` and `-r`) |
-| `--only METRIC ...` | Run only the specified metrics (see `--list-metrics` for valid names) |
+| `--only M1,M2,...` | Run only the specified metrics (comma-separated, see `--list-metrics` for valid names) |
 | `--list-metrics` | Print all 25 metric names grouped by category, then exit |
 | `--json` | Output results as JSON to stdout (NaN/inf converted to null) |
 | `--time` | Print elapsed time in seconds to stderr |

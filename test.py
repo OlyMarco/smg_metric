@@ -223,7 +223,7 @@ def _collect_midis(args: argparse.Namespace) -> list[Path]:
         for f in args.files:
             p = Path(f)
             if p.is_dir():
-                midis.extend(sorted(p.glob("*.mid")))
+                midis.extend(sorted(p.rglob("*.mid")))
             elif p.is_file():
                 midis.append(p)
             else:
@@ -233,9 +233,9 @@ def _collect_midis(args: argparse.Namespace) -> list[Path]:
     gt_dir = _root / "data" / "ref"
     midis = []
     if gen_dir.is_dir():
-        midis.extend(sorted(gen_dir.glob("*.mid")))
+        midis.extend(sorted(gen_dir.rglob("*.mid")))
     if gt_dir.is_dir():
-        midis.extend(sorted(gt_dir.glob("*.mid")))
+        midis.extend(sorted(gt_dir.rglob("*.mid")))
     if not midis:
         midis = sorted((_root / "data").glob("*.mid"))
     return midis

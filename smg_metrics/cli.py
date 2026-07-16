@@ -2,29 +2,16 @@
 
 Usage::
 
-    # Single-file harmony metrics (5)
-    smg-eval -m generated.mid --harmony
-
-    # Single-file rhythm metrics (4)
-    smg-eval -m generated.mid --rhythm
-
-    # Single-file quality metrics (6)
-    smg-eval -m generated.mid --quality
-
-    # All single-file metrics (15)
+    # Single-file: -m accepts a .mid file or a directory (recursive)
     smg-eval -m generated.mid --all-single
+    smg-eval -m ./data/pred --only pce
+    smg-eval -m ./data/pred --harmony --json
 
-    # Pairwise (8 metrics incl. CS)
-    smg-eval -p generated.mid -r reference.mid
+    # Pairwise: -p (predicted) + -r (reference)
+    smg-eval -p gen.mid -r ref.mid
+    smg-eval -p gen.mid -r ref.mid -d
 
-    # Distribution-level metrics (PD, DD)
-    smg-eval -p generated.mid -r reference.mid -d
-
-    # Select a single metric
-    smg-eval -m generated.mid --only pce
-    smg-eval -p gen.mid -r ref.mid --only ca
-
-    # Batch directory
+    # Batch pairwise: --pred_dir + --ref_dir
     smg-eval --pred_dir ./pred/ --ref_dir ./ref/
 
     # JSON output
@@ -85,22 +72,62 @@ _ALL_METRICS = (
     | _PAIR_METRICS | _DIST_METRICS
 )
 
+# ── Helpers ──────────────────────────────────────────────────────
+
+def _resolve_midis(path: str) -> list[Path]:
+    """Resolve a path to a list of MIDI files.
+
+    If path is a file, returns [path]. If a directory, recursively
+    finds all .mid files. Exits with an error if nothing is found.
+    """
+    p = Path(path)
+    if p.is_file():
+        return [p]
+    if p.is_dir():
+        midis = sorted(p.rglob("*.mid"))
+        if not midis:
+            sys.exit(f"Error: no MIDI files found in {path}")
+        return midis
+    sys.exit(f"Error: path not found: {path}")
+
+def _needs(which, args, only, metrics_set):
+    """Determine if a metric category should run."""
+    if getattr(args, which) or args.all_single:
+        return True
+    if only and (only & metrics_set):
+        return True
+    if only is None and not args.harmony and not args.rhythm and not args.quality and not args.all_single:
+        return True
+    return False
+
 # ── Runners ───────────────────────────────────────────────────────
 
-def _run_harmony(midi, root, mode, only):
-    fn, _, _ = _import_single()
-    r = fn(midi, root=root, mode=mode).to_dict()
-    return {k: v for k, v in r.items() if not only or k in only} if only else r
-
-def _run_rhythm(midi, only):
-    _, fn, _ = _import_single()
-    r = fn(midi).to_dict()
-    return {k: v for k, v in r.items() if not only or k in only} if only else r
-
-def _run_quality(midi, only):
-    _, _, fn = _import_single()
-    r = fn(midi).to_dict()
-    return {k: v for k, v in r.items() if not only or k in only} if only else r
+def _run_single_file(midi, root, mode, only, args, json_mode=False):
+    """Run all applicable single-file metrics on one MIDI file."""
+    hfn, rfn, qfn = _import_single()
+    result = {}
+    if _needs('harmony', args, only, _HARMONY_METRICS):
+        h = hfn(midi, root=root, mode=mode).to_dict()
+        h = {k: v for k, v in h.items() if not only or k in only} if only else h
+        if not json_mode and h:
+            print("\n-- Harmony --")
+            _print_result(h)
+        result.update(h)
+    if _needs('rhythm', args, only, _RHYTHM_METRICS):
+        r = rfn(midi).to_dict()
+        r = {k: v for k, v in r.items() if not only or k in only} if only else r
+        if not json_mode and r:
+            print("\n-- Rhythm --")
+            _print_result(r)
+        result.update(r)
+    if _needs('quality', args, only, _QUALITY_METRICS):
+        q = qfn(midi).to_dict()
+        q = {k: v for k, v in q.items() if not only or k in only} if only else q
+        if not json_mode and q:
+            print("\n-- Quality --")
+            _print_result(q)
+        result.update(q)
+    return result
 
 def _run_pair(pred, ref, only):
     fn = _import_pair()
@@ -153,11 +180,15 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"
-            "  smg-eval -m generated.mid --all-single\n"
-            "  smg-eval -m gen.mid --harmony --rhythm\n"
-            "  smg-eval -p gen.mid -r ref.mid\n"
-            "  smg-eval -p gen.mid -r ref.mid -d\n"
-            "  smg-eval -m gen.mid --only pce,gs\n"
+            "  # Single-file on one MIDI (15 metrics)\n"
+            "  smg-eval -m generated.mid --all-single\n\n"
+            "  # Single-file on a directory (recursive, all .mid files)\n"
+            "  smg-eval -m ./data/pred --only pce,gs\n\n"
+            "  # Pairwise (8 metrics: F1, simChr, simGrv, CA, CS, XOR, NOvlp)\n"
+            "  smg-eval -p gen.mid -r ref.mid\n\n"
+            "  # Pairwise + distribution (10 metrics)\n"
+            "  smg-eval -p gen.mid -r ref.mid -d\n\n"
+            "  # Batch pairwise on two directories\n"
             "  smg-eval --pred_dir ./pred/ --ref_dir ./ref/\n\n"
             "Metric categories (25 total):\n"
             "  Harmony (5):   PCE, SC, PISR, OOK, CHE\n"
@@ -167,22 +198,39 @@ def main():
             "  Distribution (2): PD, DD\n"
         ),
     )
-    p.add_argument("-m", "--music", metavar="PATH", help="Single MIDI file")
-    p.add_argument("-p", "--pred", metavar="PATH", help="Predicted MIDI file")
-    p.add_argument("-r", "--ref", metavar="PATH", help="Reference MIDI file")
-    p.add_argument("--pred_dir", metavar="DIR", help="Pred directory (batch)")
-    p.add_argument("--ref_dir", metavar="DIR", help="Ref directory (batch)")
-    p.add_argument("--root", type=int, default=0, help="Root for PISR (0=C)")
-    p.add_argument("--mode", default="major", choices=["major", "minor"], help="Scale mode")
-    p.add_argument("--harmony", action="store_true", help="Harmony metrics (PCE, SC, PISR, OOK, CHE)")
-    p.add_argument("--rhythm", action="store_true", help="Rhythm metrics (IOI, GS, Ngram, EBR)")
-    p.add_argument("--quality", action="store_true", help="Quality metrics (Poly, PR, PE, Range, Np, Npc)")
-    p.add_argument("--all-single", action="store_true", help="All single-file metrics (15)")
-    p.add_argument("-d", "--dist", action="store_true", help="Distribution metrics (PD, DD)")
-    p.add_argument("--only", metavar="M1,M2,...", help="Only compute specified metrics (comma-separated, e.g. --only pce,note_f1)")
-    p.add_argument("--list-metrics", action="store_true", help="List all metrics and exit")
-    p.add_argument("--json", action="store_true", help="Output as JSON")
-    p.add_argument("--time", action="store_true", help="Print elapsed time")
+    p.add_argument("-m", "--music", metavar="PATH",
+                   help="MIDI file or directory for single-file metrics (15). "
+                        "If a directory, recursively finds all .mid files.")
+    p.add_argument("-p", "--pred", metavar="PATH",
+                   help="Predicted MIDI file for pairwise metrics (8)")
+    p.add_argument("-r", "--ref", metavar="PATH",
+                   help="Reference MIDI file for pairwise metrics")
+    p.add_argument("--pred_dir", metavar="DIR",
+                   help="Predicted directory for batch pairwise evaluation")
+    p.add_argument("--ref_dir", metavar="DIR",
+                   help="Reference directory for batch pairwise evaluation")
+    p.add_argument("--root", type=int, default=0,
+                   help="Root pitch class for PISR (0=C, 1=C#, ..., 11=B; default 0)")
+    p.add_argument("--mode", default="major", choices=["major", "minor"],
+                   help="Scale mode for PISR (default: major)")
+    p.add_argument("--harmony", action="store_true",
+                   help="Harmony metrics: PCE, SC, PISR, OOK, CHE (5)")
+    p.add_argument("--rhythm", action="store_true",
+                   help="Rhythm metrics: IOI, GS, Ngram, EBR (4)")
+    p.add_argument("--quality", action="store_true",
+                   help="Quality metrics: Poly, PR, PE, Range, Np, Npc (6)")
+    p.add_argument("--all-single", action="store_true",
+                   help="All single-file metrics (15 = 5 harmony + 4 rhythm + 6 quality)")
+    p.add_argument("-d", "--dist", action="store_true",
+                   help="Distribution metrics: PD, DD (2, requires -p and -r)")
+    p.add_argument("--only", metavar="M1,M2,...",
+                   help="Only compute specified metrics (comma-separated, e.g. --only pce,note_f1)")
+    p.add_argument("--list-metrics", action="store_true",
+                   help="List all 25 metric names grouped by category, then exit")
+    p.add_argument("--json", action="store_true",
+                   help="Output as JSON (NaN/inf become null)")
+    p.add_argument("--time", action="store_true",
+                   help="Print elapsed time to stderr")
 
     args = p.parse_args()
 
@@ -203,45 +251,41 @@ def main():
             sys.exit(f"Unknown metrics: {', '.join(sorted(unknown))}\nUse --list-metrics.")
 
     t0 = time.monotonic()
-    result = {}
 
-    # ── Single-file mode ──
+    # ── Single-file mode (-m): file or directory ──
     if args.music:
-        needs_h = args.harmony or args.all_single or (only and only & _HARMONY_METRICS)
-        needs_r = args.rhythm or args.all_single or (only and only & _RHYTHM_METRICS)
-        needs_q = args.quality or args.all_single or (only and only & _QUALITY_METRICS)
-        if only is None and not args.harmony and not args.rhythm and not args.quality and not args.all_single:
-            needs_h = needs_r = needs_q = True
+        midis = _resolve_midis(args.music)
+        if len(midis) == 1:
+            # Single file: flat output
+            result = _run_single_file(
+                str(midis[0]), args.root, args.mode, only, args, json_mode=args.json)
+            if args.json and result:
+                print(json.dumps(_json_safe(result), indent=2, ensure_ascii=False))
+        else:
+            # Directory: per-file output
+            all_results = {}
+            for midi in midis:
+                if not args.json:
+                    print(f"\n{'='*60}\nFile: {midi.name}\n{'='*60}")
+                fr = _run_single_file(
+                    str(midi), args.root, args.mode, only, args, json_mode=args.json)
+                all_results[midi.name] = fr
+            if args.json:
+                print(json.dumps(_json_safe(all_results), indent=2, ensure_ascii=False))
+        if args.time:
+            print(f"\nElapsed: {time.monotonic() - t0:.2f}s", file=sys.stderr)
+        return
 
-        if needs_h:
-            h = _run_harmony(args.music, args.root, args.mode, only)
-            if not args.json:
-                print(f"\n{'='*60}\nHarmony: {args.music}\n{'='*60}\n")
-                _print_result(h)
-            result.update(h)
-        if needs_r:
-            r = _run_rhythm(args.music, only)
-            if not args.json and r:
-                print("\n-- Rhythm --")
-                _print_result(r)
-            result.update(r)
-        if needs_q:
-            q = _run_quality(args.music, only)
-            if not args.json and q:
-                print("\n-- Quality --")
-                _print_result(q)
-            result.update(q)
-
-    # ── Pairwise mode ──
+    # ── Pairwise mode (-p + -r) ──
+    result = {}
     if args.pred and args.ref:
         needs_pair = only is None or bool(only & _PAIR_METRICS)
         needs_dist = args.dist or (only and only & _DIST_METRICS)
         if only is None and not args.dist:
             needs_dist = False
-        if not args.music and needs_pair:
+        if needs_pair:
             if not args.json:
                 print(f"\n{'='*60}\nPairwise: {args.pred} vs {args.ref}\n{'='*60}\n")
-        if needs_pair:
             pair = _run_pair(args.pred, args.ref, only)
             if not args.json:
                 _print_result(pair)
@@ -253,11 +297,11 @@ def main():
                 _print_result(dist)
             result.update(dist)
 
-    # ── Batch mode ──
-    elif not args.music and args.pred_dir and args.ref_dir:
+    # ── Batch mode (--pred_dir + --ref_dir) ──
+    elif args.pred_dir and args.ref_dir:
         result = _run_batch(args.pred_dir, args.ref_dir, args.root, args.mode)
 
-    # ── No input ──
+    # ── No valid input ──
     elif not result:
         p.print_help()
         return
