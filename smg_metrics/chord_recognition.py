@@ -245,9 +245,9 @@ def _extract_beat_features(midi_path, extra_division: int = 2) -> tuple:
     Returns:
         ``(beat_chroma, beat_bass, qt_beat_onset, qt_beat_offset, beat_array)``
     """
-    import miditoolkit
+    import pretty_midi
     raw_beats, downbeats = _get_beats_and_downbeats(midi_path)
-    midi = miditoolkit.MidiFile(str(midi_path))
+    pm = pretty_midi.PrettyMIDI(str(midi_path))
 
     if len(raw_beats) < 2:
         return np.zeros((0, 12)), np.zeros((0, 12)), np.array([]), np.array([]), np.array([])
@@ -305,7 +305,7 @@ def _extract_beat_features(midi_path, extra_division: int = 2) -> tuple:
         return min(float(bend), qend) - max(float(bstart), qstart)
 
     # Process all non-drum instruments with uniform channel weights
-    for inst in midi.instruments:
+    for inst in pm.instruments:
         if inst.is_drum:
             continue
         for note in inst.notes:

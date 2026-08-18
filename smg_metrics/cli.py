@@ -176,7 +176,7 @@ def _run_batch(pred_dir, ref_dir, root, mode):
 def main():
     p = argparse.ArgumentParser(
         prog="smg-eval",
-        description="smg-metrics v5.4.2 - 25 metrics for Symbolic Music Generation evaluation",
+        description="smg-metrics v5.4.3 - 25 metrics for Symbolic Music Generation evaluation",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"

@@ -67,16 +67,15 @@ If PyTorch or model weights are unavailable, CS is skipped with a warning and de
 ## Installation
 
 ```bash
-# From PyPI
+# From PyPI (default: no PyTorch, 24/25 metrics work)
 pip install smg-metrics
 
-# With optional PyTorch for CS metric
+# With PyTorch for CS metric (25/25 metrics)
 pip install smg-metrics[torch]
 
-# From source (for development)
-git clone https://github.com/OlyMarco/smg_metric.git
-cd smg_metric
-pip install -e ".[dev,torch]"
+# From source
+pip install -e .
+pip install -e ".[torch]"
 ```
 
 ### Dependencies
@@ -660,7 +659,7 @@ smg_metric/
 
 ---
 
-## v5.4.2 Changelog
+## v5.4.3 Changelog
 
 ### Structural Refactoring
 
@@ -688,7 +687,7 @@ All 25 metrics verified against original literature descriptions and source code
 
 ### Changes
 
-- Version: 5.3.0 -> 5.4.2
+- Version: 5.3.0 -> 5.4.3
 - Total metrics: 52 -> 25
 - CLI: New `--harmony`, `--rhythm`, `--quality`, `--all-single` flags
 - test.py: Updated to use new module structure

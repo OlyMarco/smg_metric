@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Full metric test script for smg_metrics v5.4.2.
+"""Full metric test script for smg_metrics v5.4.3.
 
 Tests ALL 25 metrics on user-specified MIDI files (single-file)
 and every file pair (pairwise), prints a summary table, and
@@ -20,7 +20,7 @@ Usage::
     python test.py --pair-only pred.mid ref.mid
 
     # Quick metric subset
-    python test.py --only pce ebr note_f1 ca sim_chr pred.mid ref.mid
+    python test.py --only cs data\pred\seg_0_8.mid data\ref\seg_0_8.mid
 """
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ from smg_metrics import (
 
 SEP = "=" * 72
 
-# Metric counts (v5.4.2)
+# Metric counts (v5.4.3)
 N_HARMONY = 5
 N_RHYTHM = 4
 N_QUALITY = 6
@@ -243,7 +243,7 @@ def _collect_midis(args: argparse.Namespace) -> list[Path]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description=f"smg_metrics v5.4.2 - Full Metric Test ({N_TOTAL} metrics)",
+        description=f"smg_metrics v5.4.3 - Full Metric Test ({N_TOTAL} metrics)",
         epilog=(
             "Examples:\n"
             "  python test.py data/gen/ data/gt/            # all MIDI in dirs\n"
@@ -271,7 +271,7 @@ def main() -> None:
     n_pairs = n_files * (n_files - 1) // 2
 
     print(SEP)
-    print(f"smg_metrics v5.4.2 - Full Metric Test ({N_TOTAL} metrics)")
+    print(f"smg_metrics v5.4.3 - Full Metric Test ({N_TOTAL} metrics)")
     print(SEP)
     print(f"  MIDI files : {n_files}")
     print(f"  File pairs : {n_pairs}")
@@ -322,7 +322,7 @@ def main() -> None:
 
     if args.json:
         output = {
-            "version": "5.4.2",
+            "version": "5.4.3",
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
             "files": [str(m) for m in midis],
             "n_files": n_files,

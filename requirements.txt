@@ -8,3 +8,4 @@ pretty-midi>=0.2.10
 numpy>=1.24
 scipy>=1.10
 mir-eval>=0.7
+tqdm>=0.13.0
